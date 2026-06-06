@@ -33,12 +33,13 @@
 
 package com.actelion.research.chem.forcefield.mmff;
 
+import org.cheminfo.utils.FakeFileInputStream;
+
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import org.cheminfo.utils.FakeFileInputStream;
 import java.nio.charset.StandardCharsets;
 
 /**

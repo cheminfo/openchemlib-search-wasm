@@ -38,14 +38,6 @@ import java.text.DecimalFormat;
 import java.util.*;
 
 public class ArrayUtils {
-	public static int[] resize(int[] arr, int newSize) {
-		int[] newArray = new int[newSize];
-		int toCopy = Math.min(arr.length, newSize);
-		for (int i = 0; i < toCopy; i++) {
-			newArray[i] = arr[i];
-		}
-		return newArray;
-	}
 
 
 	public static boolean equals(int [] a, int [] b){
@@ -74,6 +66,18 @@ public class ArrayUtils {
 		return eq;
 	}
 
+	/**
+	 * Resize an array 
+	 */
+	public final static Object resize(Object a, int newSize) {
+		Class cl = a.getClass();
+		if (!cl.isArray()) return null;
+		int size = Array.getLength(a);
+		Class componentType = a.getClass().getComponentType();
+		Object newArray = Array.newInstance(componentType, newSize);
+		System.arraycopy(a, 0, newArray, 0, Math.min(size, newSize));
+		return newArray;
+	}
 	
 	/**
 	 * Resize an array of Object
@@ -401,6 +405,18 @@ public class ArrayUtils {
 	}
 
 	
+	/**
+	 * Copy an array 
+	 */
+	public final static Object copy(Object a) {
+		Class cl = a.getClass();
+		if (!cl.isArray()) return null;
+		int size = Array.getLength(a);
+		Class componentType = a.getClass().getComponentType();
+		Object newArray = Array.newInstance(componentType, size);
+		System.arraycopy(a, 0, newArray, 0, size);
+		return newArray;
+	}
 	
 	public final static boolean contains(List<int[]> list, int[] arr) {
 		for (int[] arr2: list ) {

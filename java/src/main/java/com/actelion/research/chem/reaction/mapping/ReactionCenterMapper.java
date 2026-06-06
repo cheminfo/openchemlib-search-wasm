@@ -36,7 +36,6 @@ package com.actelion.research.chem.reaction.mapping;
 
 import com.actelion.research.chem.StereoMolecule;
 
-import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.TreeMap;
 
@@ -300,7 +299,7 @@ public class ReactionCenterMapper {
 					isUsed[i] = true;
 					solution[index] = i;
 					if (index+1 == solution.length)
-						mPermutationList.add(Arrays.copyOf(solution, solution.length));
+						mPermutationList.add(solution.clone());
 					else
 						permute(index+1, isUsed, solution);
 					isUsed[i] = false;

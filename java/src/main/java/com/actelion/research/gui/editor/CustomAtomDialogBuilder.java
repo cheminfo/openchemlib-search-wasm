@@ -143,7 +143,7 @@ public class CustomAtomDialogBuilder implements GenericEventListener<GenericActi
 
 	@Override
 	public void eventHappened(GenericActionEvent e) {
-		if (false) {
+		if (e.getSource() instanceof JTextField) {
 			processAtomLabel(false);
 			}
 		else if (e.getWhat() == GenericActionEvent.WHAT_CANCEL) {

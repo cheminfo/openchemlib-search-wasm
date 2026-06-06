@@ -501,7 +501,7 @@ public class ConformerGenerator {
 
 		baseConformer = new BaseConformer(mMolecule, mRigidFragment, mRotatableBond, fragmentPermutation, mRandom);
 //printDebugConformers(baseConformer);
-		mBaseConformerMap.put(Arrays.copyOf(fragmentPermutation, fragmentPermutation.length), baseConformer);
+		mBaseConformerMap.put(fragmentPermutation.clone(), baseConformer);
 		return baseConformer;
 		}
 

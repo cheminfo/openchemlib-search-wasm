@@ -116,7 +116,7 @@ public class InventorFragment {
 
 	private int[] getSortedAtoms() {
 		if (mSortedAtom == null) {
-			mSortedAtom = Arrays.copyOf(mGlobalAtom, mGlobalAtom.length);
+			mSortedAtom = mGlobalAtom.clone();
 			Arrays.sort(mSortedAtom);
 			}
 

@@ -268,7 +268,7 @@ public class PharmacophoreTree {
 		while(lowerBound>=0) {
 			if(cuts.size()>MAX_EXTENSION_CUTS) // prevent combinatorial explosion
 				return cuts;
-			int[] nextCut = Arrays.copyOf(previousCut, previousCut.length);
+			int[] nextCut = previousCut.clone();
 			lowerBound = getNextCut(previousCut,nextCut,subtreeEdgeIndeces,subtreeEdgeParentIndeces);
 			previousCut = nextCut;
 			boolean alreadyPresent = false;

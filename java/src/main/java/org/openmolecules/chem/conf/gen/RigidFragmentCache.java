@@ -28,6 +28,8 @@
 
 package org.openmolecules.chem.conf.gen;
 
+import org.cheminfo.utils.FakeFileInputStream;
+
 import com.actelion.research.chem.Canonizer;
 import com.actelion.research.chem.Coordinates;
 import com.actelion.research.chem.IDCodeParserWithoutCoordinateInvention;
@@ -36,7 +38,6 @@ import com.actelion.research.chem.io.CompoundFileParser;
 import com.actelion.research.util.DoubleFormat;
 
 import java.io.*;
-import org.cheminfo.utils.FakeFileInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.TreeSet;
 import java.util.concurrent.ArrayBlockingQueue;

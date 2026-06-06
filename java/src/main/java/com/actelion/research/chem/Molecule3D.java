@@ -453,7 +453,7 @@ public class Molecule3D extends StereoMolecule implements Comparable<Molecule3D>
 		int a = addAtom(m.getAtomicNo(i));
 		atomFlags[a] = m.getAtomFlags(i);
 		partialCharges[a] = m.getPartialCharge(i);
-		// infos[a] = m.infos[i].clone();
+		infos[a] = m.infos[i].clone();
 		setAtomX(i, getAtomX(i));
 		setAtomY(i, getAtomY(i));
 		setAtomZ(i, getAtomZ(i));

@@ -288,7 +288,132 @@ public abstract class CompoundFileHelper {
 	    return mErrorCount;
 	    }
 	
+	public static CompoundFileFilter createFileFilter(int filetypes, boolean isSaving) {
+		if (filetypes == cFileTypeDirectory)
+			return new CompoundFileFilter() {
+				@Override
+				public boolean accept(File f) {
+					return f.isDirectory();
+				}
+			};
 
+		CompoundFileFilter filter = new CompoundFileFilter();
+		if ((filetypes & cFileTypeDataWarrior) != 0) {
+            filter.addExtension("dwar");
+            if (!isSaving)
+                filter.addExtension("ode");  // old extention
+			filter.addDescription("DataWarrior data files");
+			}
+		if ((filetypes & cFileTypeDataWarriorTemplate) != 0) {
+            filter.addExtension("dwat");
+            if (!isSaving)
+                filter.addExtension("odt");  // old extention
+			filter.addDescription("DataWarrior template files");
+			}
+		if ((filetypes & cFileTypeDataWarriorQuery) != 0) {
+            filter.addExtension("dwaq");
+            if (!isSaving)
+                filter.addExtension("odq");  // old extention
+			filter.addDescription("DataWarrior query files");
+			}
+		if ((filetypes & cFileTypeDataWarriorMacro) != 0) {
+            filter.addExtension("dwam");
+			filter.addDescription("DataWarrior macro files");
+			}
+		if ((filetypes & cFileTypeTextTabDelimited) != 0) {
+			filter.addExtension("tsv");
+			filter.addExtension("txt");
+			filter.addDescription("TAB delimited text files");
+			}
+        if ((filetypes & cFileTypeTextAnyCSV) != 0) {
+            filter.addExtension("csv");
+            filter.addDescription("Comma [,;|] separated text files");
+            }
+		if ((filetypes & cFileTypeRXN) != 0) {
+			filter.addExtension("rxn");
+			filter.addDescription("MDL reaction files");
+			}
+		if ((filetypes & cFileTypeSD) != 0) {
+			filter.addExtension("sdf");
+			filter.addDescription("MDL SD-files");
+			}
+		if ((filetypes & cFileTypeSDGZ) != 0) {
+			filter.addExtension("sdf.gz");
+			filter.addDescription("gzipped MDL SD-files)");
+			}
+		if ((filetypes & cFileTypeSDZIP) != 0) {
+			filter.addExtension("sdf.zip");
+			filter.addDescription("zipped MDL SD-files)");
+			}
+		if ((filetypes & cFileTypeRD) != 0) {
+			filter.addExtension("rdf");
+			filter.addDescription("MDL RD-files");
+			}
+		if ((filetypes & cFileTypeSOM) != 0) {
+            filter.addExtension("dwas");
+            if (!isSaving)
+                filter.addExtension("som");  // old extention
+			filter.addDescription("DataWarrior self organized map");
+			}
+		if ((filetypes & cFileTypeJPG) != 0) {
+			filter.addExtension("jpg");
+			filter.addExtension("jpeg");
+			filter.addDescription("JPEG image files");
+			}
+		if ((filetypes & cFileTypeGIF) != 0) {
+			filter.addExtension("gif");
+			filter.addDescription("GIF image files");
+			}
+		if ((filetypes & cFileTypePNG) != 0) {
+			filter.addExtension("png");
+			filter.addDescription("PNG image files");
+			}
+		if ((filetypes & cFileTypeSVG) != 0) {
+			filter.addExtension("svg");
+			filter.addDescription("scalable vector graphics files");
+			}
+
+        if (filetypes == cFileTypeDataWarriorCompatibleData) {
+            filter.setDescription("DataWarrior compatible files");
+            }
+        if (filetypes == cFileTypeDataWarriorTemplateContaining) {
+            filter.setDescription("Files containing a DataWarrior template");
+            }
+        if (filetypes == cFileTypePictureFile) {
+            filter.setDescription("Image files");
+            }
+		if ((filetypes & cFileTypePDB) != 0 && (filetypes & cFileTypeMMCIF) != 0) {
+			filter.addExtension("pdb");
+			filter.addExtension("cif");
+			filter.addExtension("mmcif");
+			filter.addDescription("PDB/MMCIF Protein Data Bank files");
+		}
+		else {
+			if ((filetypes & cFileTypePDB) != 0) {
+				filter.addExtension("pdb");
+				filter.addDescription("Classical Protein Data Bank files");
+				}
+			if ((filetypes & cFileTypeMMCIF) != 0) {
+				filter.addExtension("cif");
+				filter.addExtension("mmcif");
+				filter.addDescription("MMCIF Protein Data Bank files");
+				}
+			}
+		if ((filetypes & cFileTypeMMTF) != 0) {
+			filter.addExtension("mmtf");
+			filter.addDescription("Binary Protein Data Bank files");
+			}
+		if ((filetypes & cFileTypeMOL) != 0) {
+			filter.addExtension("mol");
+			filter.addDescription("MDL Molfiles");
+			}
+		if ((filetypes & cFileTypeMOL2) != 0) {
+			filter.addExtension("mol2");
+			filter.addDescription("Tripos Mol2 files");
+			}
+
+		return filter;
+		}
 
 	/**
 	 * Return the extension portion of the file's name.
@@ -527,5 +652,28 @@ public abstract class CompoundFileHelper {
 		return extensions.toArray(new String[0]);
 		}
 
-	
+	public void saveRXNFile(Reaction rxn) {
+		String fileName = selectFileToSave("Select reaction file", cFileTypeRXN, "Untitled Reaction");
+		if (fileName != null) {
+			String extension = ".rxn";
+			int dotIndex = fileName.lastIndexOf('.');
+			int slashIndex = fileName.lastIndexOf(File.separator);
+			if (dotIndex == -1
+			 || dotIndex < slashIndex)
+				fileName = fileName.concat(extension);
+		    else if (!fileName.substring(dotIndex).equalsIgnoreCase(extension)) {
+				showMessage("Incompatible file name extension.");
+			    return;
+				}
+
+			try {
+				BufferedWriter theWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName), StandardCharsets.UTF_8));
+				new RXNFileCreator(rxn).writeRXNfile(theWriter);
+				theWriter.close();
+				}
+			catch (IOException e) {
+				showMessage("IOException: "+e);
+				}
+			}
+		}
 	}

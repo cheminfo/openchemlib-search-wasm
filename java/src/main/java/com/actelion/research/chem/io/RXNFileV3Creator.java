@@ -71,7 +71,7 @@ public class RXNFileV3Creator
 			theWriter.write(NL);
             int rcnt = rxn.getReactants();
             int pcnt = rxn.getProducts();
-            theWriter.write("M  V30 COUNTS "+rcnt+" "+pcnt+NL);
+            theWriter.write(String.format("M  V30 COUNTS %d %d"+NL,rcnt,pcnt));
 
 			double scalingFactor = getScalingFactor(rxn);
 

@@ -33,7 +33,7 @@
 
 package com.actelion.research.chem.forcefield.mmff;
 
-import java.util.HashMap;
+import java.util.Hashtable;
 
 /**
  * The Separation class is an efficient storage of an adjacency matrix
@@ -54,8 +54,8 @@ public class Separation {
         ONE_X;     // (Default) A1 and A2 are separated by more than two atoms.
     }
 
-    public HashMap<SortedPair, Relation> table =
-        new HashMap<SortedPair, Relation>();
+    public Hashtable<SortedPair, Relation> table =
+        new Hashtable<SortedPair, Relation>();
 
     /**
      * Constructs a new separation table for a molecule.

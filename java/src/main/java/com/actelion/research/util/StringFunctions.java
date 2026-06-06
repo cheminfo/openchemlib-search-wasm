@@ -1100,7 +1100,18 @@ public class StringFunctions {
 	}
 
 
-
+	public static String toString(Exception ex) {
+		StringWriter sw = new StringWriter();
+		ex.printStackTrace(new PrintWriter(sw));
+		String exceptionAsString = sw.toString();
+		return exceptionAsString;
+	}
+	public static String toString(Throwable ex) {
+		StringWriter sw = new StringWriter();
+		ex.printStackTrace(new PrintWriter(sw));
+		String exceptionAsString = sw.toString();
+		return exceptionAsString;
+	}
 
 
 	public static String toString(List<String> li) {
@@ -1498,6 +1509,13 @@ public class StringFunctions {
 		return true;
 	}
 
+	public static String toStringStackTrace(Throwable ex){
+		StringWriter sw = new StringWriter();
+		PrintWriter pw = new PrintWriter(sw);
+		ex.printStackTrace(pw);
+		return sw.toString();
+
+	}
 	public static void main(String[] args) {
 
 		String sLine = "Pos3ition: 8 15 StartName:XXXEn7890dName0";

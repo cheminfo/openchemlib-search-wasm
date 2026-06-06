@@ -34,10 +34,11 @@
 
 package com.actelion.research.chem.prediction;
 
+import org.cheminfo.utils.FakeFileInputStream;
+
 import com.actelion.research.chem.SSSearcherWithIndex;
 import com.actelion.research.chem.descriptor.DescriptorHandlerLongFFP512;
 
-import org.cheminfo.utils.FakeFileInputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;

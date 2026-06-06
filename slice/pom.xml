@@ -47,13 +47,10 @@
   <build>
     <plugins>
       <!--
-        The vendored OCL subset contains conformer/docking/editor/flexophore
-        classes that reference packages excluded for this build (org.openmolecules,
-        org.cheminfo.utils, smile.*, Swing). They are off the substructure path.
-        Rather than compile all 536 files, compile ONLY the entry point and let
-        javac pull the transitive closure on demand via -sourcepath, so the
-        unreachable broken files are never touched. TeaVM then DCE-compiles that
-        same closure to wasm.
+        Stage 2 benchmark POC. The OpenChemLib source is no longer duplicated
+        here; it is pulled on demand from the shared vendored copy in ../java via
+        -sourcepath, so only the substructure closure compiles (off-path files are
+        never touched). Run `npm run copy:openchemlib` first if ../java is empty.
       -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -64,7 +61,7 @@
           </includes>
           <compilerArgs>
             <arg>-sourcepath</arg>
-            <arg>${project.basedir}/src/main/java</arg>
+            <arg>${project.basedir}/src/main/java:${project.basedir}/../java/src/main/java</arg>
           </compilerArgs>
         </configuration>
       </plugin>

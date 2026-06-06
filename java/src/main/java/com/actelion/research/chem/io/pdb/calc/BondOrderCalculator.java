@@ -141,7 +141,7 @@ if (sDebugLigandID != null && !mMol.getName().contains(sDebugLigandID)) return;
 		assignObviousBonds();
 
 		determineAromaticBonds();
-		boolean success = new AromaticityResolver(mMol, mBondLength).locateDelocalizedDoubleBonds(Arrays.copyOf(mIsAromaticBond, mIsAromaticBond.length), true, false);
+		boolean success = new AromaticityResolver(mMol, mBondLength).locateDelocalizedDoubleBonds(mIsAromaticBond.clone(), true, false);
 		if (!success)
 			System.out.println("$$$ WARNING: Assignment of aromatic ring bonds failed.");
 

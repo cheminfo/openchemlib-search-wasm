@@ -2066,7 +2066,7 @@ public class StructureCalculator {
 		//System.out.println("StructureCalculator.getFragmentMatchesRec() "+matchIndex+" :"+fragment.getAllAtoms()+" "+mol.getNMovables());
 		if(fragmentMatchIndex>=fragment.getAllAtoms()) {
 			//Terminal Condition, we found a match
-			res.add(Arrays.copyOf(match, match.length));
+			res.add(match.clone());
 		} else {
 			//Find an atom in mol that matches fragment.getAtom(fragmentMatchIndex)			
 			atomLoop: for (int a = 0; a<mol.getNMovables(); a++) {

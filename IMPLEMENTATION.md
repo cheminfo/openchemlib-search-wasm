@@ -23,6 +23,24 @@ tests/                        ported from openchemlib-js (import from '#lib')
 
 Build: `npm run build` (= `build-wasm` Maven + `build-embed`). Test: `npm run test-only`.
 
+## Vendoring upstream OpenChemLib
+
+Like openchemlib-js, the OCL source is tracked two ways: the `openchemlib` git
+**submodule** is the upstream pin, and `java/src/main/java/{com,info,org,smile}` +
+`resources/` are a **committed copy** so clones build offline. `npm run
+copy:openchemlib` (`scripts/copy-openchemlib.mjs`) regenerates the copy from the
+submodule; re-run it after bumping the submodule, then `npm run build && npm run test-only`.
+
+The **WASM patch set is much smaller than GWT's** — TeaVM supports `java.util.Hashtable`,
+`.clone()`, `String.format` and `StandardCharsets`, so none of those GWT rewrites are
+applied. Only two reconciliations are needed (10 files):
+1. route OCL resource loading (`X.class.getResourceAsStream` / `getClass().getResourceAsStream`)
+   through the pure-Java `org.cheminfo.utils.FakeFileInputStream`;
+2. strip `RigidFragmentCache`'s disk-cache methods (they use the removed `gui.FileHelper`).
+
+The facade (`org/openchemlib/wasm`) and the shim (`org/cheminfo/utils/FakeFileInputStream.java`)
+are hand-written and preserved across re-vendoring.
+
 ## Facade pattern (one Java class per public OCL class)
 
 - Name the facade class with the **exact JS export name** (`Molecule`,
@@ -73,11 +91,9 @@ Resources are **not** bundled into the wasm via a `ResourceSupplier`; instead th
 - Resource-loaded classes call `Resources.checkHasRegistered()` in their
   constructor and throw `"static resources must be registered first"` until then.
 
-Two GWT patches had to be reconciled for TeaVM: `FingerPrintGenerator` was reverted
-from `JSHashMap` back to `java.util.Hashtable` (TeaVM supports it), and the orphaned
-`com.actelion.research.gui.FileHelper` import was dropped from `RigidFragmentCache`
-(its disk-I/O methods are already stripped). `org.openmolecules` (conformer) is a
-second vendored source root alongside `com`.
+The resource-loading reroute and the `RigidFragmentCache` disk-method removal are
+applied automatically by the vendoring script (see "Vendoring upstream OpenChemLib").
+`org.openmolecules` (conformer) is a second vendored source root alongside `com`.
 
 ## Status
 

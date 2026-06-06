@@ -36,7 +36,6 @@ package com.actelion.research.chem;
 
 import com.actelion.research.util.IntArrayComparator;
 
-import java.util.Arrays;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -125,7 +124,7 @@ public class TautomerHelper {
 			// If limited free valence prevents that (because now there is a double bond, where it was single),
 			// then add remaining D and to other atoms in same region, which gained a free valence.
 			if (mAtomDCount != null) {
-				int[] regionDCount = Arrays.copyOf(mRegionDCount, mRegionDCount.length);
+				int[] regionDCount = mRegionDCount.clone();
 				for (int atom=0; atom<tautomer.getAtoms(); atom++) {
 					int dCount = Math.min(freeValence[atom], mAtomDCount[atom]);
 					for (int i=0; i<dCount; i++) {
@@ -146,7 +145,7 @@ public class TautomerHelper {
 				}
 
 			if (mAtomTCount != null) {
-				int[] regionTCount = Arrays.copyOf(mRegionTCount, mRegionTCount.length);
+				int[] regionTCount = mRegionTCount.clone();
 				for (int atom=0; atom<tautomer.getAtoms(); atom++) {
 					int tCount = Math.min(freeValence[atom], mAtomTCount[atom]);
 					for (int i=0; i<tCount; i++) {

@@ -33,8 +33,9 @@
 
 package com.actelion.research.chem.prediction;
 
-import java.io.*;
 import org.cheminfo.utils.FakeFileInputStream;
+
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 

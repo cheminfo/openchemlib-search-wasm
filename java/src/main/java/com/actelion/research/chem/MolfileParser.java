@@ -1116,7 +1116,7 @@ public class MolfileParser
 	{
 		mMol = mol;
 		try{
-			BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+			BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
 			BOMSkipper.skip(reader);
 			return readMoleculeFromBuffer(reader);
 		} catch(IOException e){

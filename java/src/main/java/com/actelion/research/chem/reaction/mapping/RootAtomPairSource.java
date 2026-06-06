@@ -124,8 +124,8 @@ public class RootAtomPairSource {
 		}
 
 	private void initializeRanks() {
-		int[] reactantRank_ = mReactantCanonizer.getSymmetryRanks(); mReactantRank = Arrays.copyOf(reactantRank_, reactantRank_.length);
-		int[] productRank_ = mProductCanonizer.getSymmetryRanks(); mProductRank = Arrays.copyOf(productRank_, productRank_.length);
+		mReactantRank = mReactantCanonizer.getSymmetryRanks().clone();
+		mProductRank = mProductCanonizer.getSymmetryRanks().clone();
 		for (int rank:mReactantRank)
 			if (mHighestReactionRank < rank)
 				mHighestReactionRank = rank;

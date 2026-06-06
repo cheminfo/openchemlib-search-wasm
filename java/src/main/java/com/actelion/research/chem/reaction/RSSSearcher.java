@@ -38,7 +38,6 @@ import com.actelion.research.chem.SSSearcher;
 import com.actelion.research.chem.StereoMolecule;
 import com.actelion.research.util.ArrayUtils;
 
-import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -58,13 +57,13 @@ public class RSSSearcher
     private static void debug(String format,Object ...args)
     {
         if (debug)
-            System.out.println("");
+            System.out.printf(format,args);
     }
 
     private static void debug2(String format,Object ...args)
     {
         if (debug2)
-            System.out.println("");
+            System.out.printf(format,args);
     }
 
     private static class MapsList extends ArrayList<int[]>
@@ -410,7 +409,7 @@ public class RSSSearcher
                 for (int i = 1; i < sizeofListToAdd; i++) {
                     for (int j = 0; j < sourceListSize; j++) {
                         int[] s = sourceList.get(j);
-                        sourceList.add(Arrays.copyOf(s, s.length));
+                        sourceList.add(s.clone());
                     }
                 }
                 // Add the elements of each list to add at the end of the sourcelist

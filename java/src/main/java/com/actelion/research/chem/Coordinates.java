@@ -334,9 +334,17 @@ public final class Coordinates implements Serializable, Comparable<Coordinates> 
 		return "[" + df.format(x) + ", " + df.format(y) + ", " + df.format(z) + "]";
 	}
 
-	
+	public String toStringSpaceDelimited() {
+		DecimalFormat df = new DecimalFormat("0.00");
+		return df.format(x) + " " + df.format(y) + " " + df.format(z);
+	}
 
-	
+	public String toStringSpaceDelimited(Locale locale) {
+		NumberFormat nf = NumberFormat.getNumberInstance(locale);
+		DecimalFormat df = (DecimalFormat)nf;
+		df.applyPattern("0.00");
+		return df.format(x) + " " + df.format(y) + " " + df.format(z);
+	}
 
 	@Override
 	public boolean equals(Object o) {

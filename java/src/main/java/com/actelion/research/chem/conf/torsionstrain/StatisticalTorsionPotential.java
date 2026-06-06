@@ -1,5 +1,7 @@
 package com.actelion.research.chem.conf.torsionstrain;
 
+import org.cheminfo.utils.FakeFileInputStream;
+
 import com.actelion.research.chem.conf.TorsionDB;
 import com.actelion.research.chem.interactions.SplineFunction;
 import com.actelion.research.util.FastSpline;
@@ -9,7 +11,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import org.cheminfo.utils.FakeFileInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;

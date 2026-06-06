@@ -2479,7 +2479,99 @@ public class ClassificationData {
 		return sInstance;
 		}
 
-	private void initialize() {}
+	private void initialize() {
+		Scanner scanner = new Scanner(CLASSDATA);
+
+		mHEntries = scanner.nextInt();
+		mHRxnTb1 = new String[mHEntries];
+		mHRxnTb2 = new String[mHEntries];
+		mHRxnDe = new int[mHEntries];
+		mHRxnDefs = new int[mHEntries];
+		for (int i=0; i<mHEntries; i++) {
+			mHRxnTb1[i] = scanner.next();
+			mHRxnTb2[i] = scanner.next();
+			String s = scanner.next();
+			mHRxnDe[i] = Integer.parseInt(s, 16);
+			mHRxnDefs[i] = Integer.parseInt(scanner.next(), 16);
+			}
+
+		mDEntries = scanner.nextInt();
+		mDRxnTb1 = new String[mDEntries];
+		mDRxnTb2 = new String[mDEntries];
+		mDRxnDe = new int[mDEntries];
+		for (int i=0; i<mDEntries; i++) {
+			mDRxnTb1[i] = scanner.next();
+			mDRxnTb2[i] = scanner.next();
+			mDRxnDe[i] = Integer.parseInt(scanner.next(), 16);
+			}
+
+		mEEntries = scanner.nextInt();
+		mERxnTb = new String[mEEntries];
+		mERxnDe = new int[mEEntries];
+		for (int i=0; i<mEEntries; i++) {
+			mERxnTb[i] = scanner.next();
+			mERxnDe[i] = Integer.parseInt(scanner.next(), 16);
+			}
+
+		mCEntries = scanner.nextInt();
+		mCRxnTb1 = new String[mCEntries];
+		mCRxnTb2 = new String[mCEntries];
+		mCRxnDe = new int[mCEntries];
+		for (int i=0; i<mCEntries; i++) {
+			mCRxnTb1[i] = scanner.next();
+			mCRxnTb2[i] = scanner.next();
+			mCRxnDe[i] = Integer.parseInt(scanner.next(), 16);
+			}
+
+		mREntries = scanner.nextInt();
+		mRRxnTb = new String[mREntries];
+		mRRxnDe = new int[mREntries];
+		mRRxn_fGrpNo = new int[mREntries];
+		mRRxn_Sym = new boolean[mREntries];
+		mRRxnDefs = new int[mREntries][];
+		for (int i=0; i<mREntries; i++) {
+			mRRxnTb[i] = scanner.next();
+			mRRxnDe[i] = Integer.parseInt(scanner.next(), 16);
+			mRRxnDefs[i] = new int[scanner.nextInt()];
+			mRRxn_fGrpNo[i] = scanner.nextInt();
+			mRRxn_Sym[i] = (scanner.nextInt() == 1);
+			for (int j=0; j<mRRxnDefs[i].length; j++) {
+				mRRxnDefs[i][j] = Integer.parseInt(scanner.next(), 16);
+//				fscanf( fpoin,"%lx", (unsigned long *)&mRRxnDefs[i][j][0] );
+//				::invertLongOnMac( (void *)mRRxnDefs[i][j] );
+				}
+			}
+
+		mGRPName = new String[512];
+		try {
+			BufferedReader reader = new BufferedReader(new StringReader(GRPNAMES));
+			String line = reader.readLine();
+			while (line != null) {
+				int matchLevel = line.charAt(0) - '0';
+				int groupNo = Integer.parseInt(line.substring(2,4), 16);
+				String name = line.substring(5);
+				int index = getGRPNameIndex(groupNo, matchLevel);
+				mGRPName[index] = name;
+				line = reader.readLine();
+				}
+			}
+		catch (IOException ioe) {}
+
+		mEFGName = new String[2048];
+		try {
+			BufferedReader reader = new BufferedReader(new StringReader(EFGNAMES));
+			String line = reader.readLine();
+			while (line != null) {
+				int matchLevel = line.charAt(0) - '0';
+				int groupNo = Integer.parseInt(line.substring(2,6), 16);
+				String name = line.substring(7);
+				int index = getEFGNameIndex(groupNo, matchLevel);
+				mEFGName[index] = name;
+				line = reader.readLine();
+				}
+			}
+		catch (IOException ioe) {}
+		}
 
 	private int getGRPNameIndex(int fGroup, int matchLevel) {
 		return GRP_OFFSET[matchLevel] + (fGroup >> (8-matchLevel));

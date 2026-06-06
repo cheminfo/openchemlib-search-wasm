@@ -31,7 +31,6 @@ package org.openmolecules.chem.conf.so;
 import com.actelion.research.chem.StereoMolecule;
 import com.actelion.research.chem.conf.Conformer;
 
-import java.util.Arrays;
 import java.util.ArrayList;
 
 public class SelfOrganizedConformer extends Conformer {
@@ -64,8 +63,8 @@ public class SelfOrganizedConformer extends Conformer {
 		mTotalStrain = conformer.mTotalStrain;
 		mLikelihood = conformer.mLikelihood;
 		mIsUsed = conformer.mIsUsed;
-		mAtomStrain = conformer.mAtomStrain == null ? null : Arrays.copyOf(conformer.mAtomStrain, conformer.mAtomStrain.length);
-		mRuleStrain = conformer.mRuleStrain == null ? null : Arrays.copyOf(conformer.mRuleStrain, conformer.mRuleStrain.length);
+		mAtomStrain = conformer.mAtomStrain == null ? null : conformer.mAtomStrain.clone();
+		mRuleStrain = conformer.mRuleStrain == null ? null : conformer.mRuleStrain.clone();
 		}
 
 	/**

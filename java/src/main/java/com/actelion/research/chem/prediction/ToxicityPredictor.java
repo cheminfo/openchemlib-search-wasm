@@ -33,6 +33,8 @@
 
 package com.actelion.research.chem.prediction;
 
+import org.cheminfo.utils.FakeFileInputStream;
+
 import com.actelion.research.calc.ThreadMaster;
 import com.actelion.research.chem.Canonizer;
 import com.actelion.research.chem.IDCodeParser;
@@ -41,7 +43,6 @@ import com.actelion.research.chem.SortedStringList;
 import com.actelion.research.chem.StereoMolecule;
 
 import java.io.BufferedReader;
-import org.cheminfo.utils.FakeFileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;

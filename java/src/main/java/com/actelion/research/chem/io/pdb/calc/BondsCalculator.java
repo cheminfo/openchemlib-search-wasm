@@ -419,7 +419,7 @@ delocalizedBondsCount++;
 			}
 		}
 
-boolean[] isDelocalizedBond = Arrays.copyOf(isAromaticBond, isAromaticBond.length);
+boolean[] isDelocalizedBond = isAromaticBond.clone();
 
 		if (!new AromaticityResolver(mol).locateDelocalizedDoubleBonds(isAromaticBond, true, false)) {
 

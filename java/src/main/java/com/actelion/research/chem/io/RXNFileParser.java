@@ -82,7 +82,7 @@ public class RXNFileParser
 	public Reaction getReaction(File file, boolean ignoreIdCode) throws Exception
 	{
 		Reaction theReaction = new Reaction();
-		BufferedReader theReader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+		BufferedReader theReader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
         BOMSkipper.skip(theReader);
 		parse(theReaction, theReader, ignoreIdCode);
 
@@ -112,7 +112,7 @@ public class RXNFileParser
 	public boolean parse(Reaction theReaction, File file, boolean ignoreIdCode)
 		throws Exception
 	{
-		BufferedReader theReader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+		BufferedReader theReader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
         BOMSkipper.skip(theReader);
 
 		return parse(theReaction, theReader, ignoreIdCode);

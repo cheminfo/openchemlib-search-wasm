@@ -768,7 +768,7 @@ public class ByteVec implements Comparable<ByteVec>, Serializable {
 		byte[] byts = new byte[data.length * 8];
 		
 		for (int i = 0; i < data.length; i++)
-			System.arraycopy(toByteArray(Double.doubleToLongBits(data[i])), 0, byts, i * 8, 8);
+			System.arraycopy(toByteArray(Double.doubleToRawLongBits(data[i])), 0, byts, i * 8, 8);
 		
 		return byts;
 	}

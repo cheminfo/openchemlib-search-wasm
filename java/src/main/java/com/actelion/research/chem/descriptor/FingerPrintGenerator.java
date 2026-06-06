@@ -55,7 +55,7 @@ public class FingerPrintGenerator
     private static final int MAX_DEPTH = 6;
     private static final boolean DEBUG = false;
     private static int debugCounter = 0;
-    private Hashtable<String, String> paths;
+    private Hashtable paths;
 
 
     /**
@@ -150,7 +150,7 @@ public class FingerPrintGenerator
      */
     private void findAllPaths(StereoMolecule mol)
     {
-        paths = new Hashtable<>();
+        paths = new Hashtable();
         debugCounter = 0;
         int atoms = mol.getAtoms();
         String s;
@@ -257,5 +257,66 @@ public class FingerPrintGenerator
     }
 
 
-    
+    public static void main(String args[])
+    {
+        String query;
+        String test = "sFp@DiTt@@@@ S~x>xixix>";
+        IDCodeParser p = new IDCodeParser(false);
+        StereoMolecule m = new StereoMolecule();
+        BitSet referencebs = null, querybs = null;
+        BufferedReader r = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
+        FingerPrintGenerator fp = null;
+        try {
+            if (args.length > 0) {
+                System.out.println("Query set");
+                test = args[0];
+                p.parse(m, test);
+                m.ensureHelperArrays(Molecule.cHelperRings);
+                fp = new FingerPrintGenerator();
+                querybs = fp.getFingerprint(m);
+                while (true) {
+                    System.out.print("Molecule:");
+                    query = r.readLine();
+                    if (query != null && query.trim().length() > 0) {
+                        p.parse(m, query);
+                        m.ensureHelperArrays(Molecule.cHelperRings);
+                        fp = new FingerPrintGenerator();
+                        referencebs = fp.getFingerprint(m);
+                        if (FingerPrintGenerator.matches(referencebs, querybs))
+                            System.out.println(query.trim() + "\tOK");
+                        else
+                            System.out.println(query.trim() + "\tNOT OK");
+                    }
+                }
+            } else {
+                test = r.readLine();
+                p.parse(m, test);
+                m.ensureHelperArrays(Molecule.cHelperRings);
+                fp = new FingerPrintGenerator();
+                querybs = fp.getFingerprint(m);
+                int count = 0;
+                int notok = 0;
+
+                while (true) {
+                    query = r.readLine();
+                    if (query != null && query.trim().length() > 0) {
+                        System.out.println("*********************");
+                        query = query.trim();
+                        p.parse(m, query);
+                        m.ensureHelperArrays(Molecule.cHelperRings);
+                        fp = new FingerPrintGenerator();
+                        referencebs = fp.getFingerprint(m);
+                        if (!FingerPrintGenerator.matches(referencebs, querybs))
+                            ++notok;
+                        count++;
+                    } else
+                        break;
+                }
+                System.out.println("Total/Not OK " + count + " " + notok);
+            }
+        } catch (Exception e) {
+            System.err.println("Server Exception: " + e);
+            e.printStackTrace();
+        }
+    }
 }

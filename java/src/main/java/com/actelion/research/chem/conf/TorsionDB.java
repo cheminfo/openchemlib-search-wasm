@@ -34,11 +34,12 @@
 
 package com.actelion.research.chem.conf;
 
+import org.cheminfo.utils.FakeFileInputStream;
+
 import com.actelion.research.chem.Molecule;
 import com.actelion.research.chem.StereoMolecule;
 
 import java.io.*;
-import org.cheminfo.utils.FakeFileInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.TreeMap;
 

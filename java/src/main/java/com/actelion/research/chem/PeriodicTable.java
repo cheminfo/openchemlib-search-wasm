@@ -33,7 +33,7 @@
 
 package com.actelion.research.chem;
 
-import java.util.HashMap;
+import java.util.Hashtable;
 
 public class PeriodicTable {
 
@@ -68,22 +68,22 @@ public class PeriodicTable {
 
 	private boolean [] arrAlkaline;
 
-	private HashMap<Integer, Element> htblDataAtNo;
+	private Hashtable<Integer, Element> htblDataAtNo;
 
-	private HashMap<String, Element> htblDataName;
+	private Hashtable<String, Element> htblDataName;
 
-	private HashMap<String, Element> htblDataSymbol;
+	private Hashtable<String, Element> htblDataSymbol;
 
 	private static PeriodicTable tbl;
 
 
 	private PeriodicTable() {
 
-		htblDataAtNo = new HashMap<>();
+		htblDataAtNo = new Hashtable<>();
 
-		htblDataName = new HashMap<>();
+		htblDataName = new Hashtable<>();
 
-		htblDataSymbol = new HashMap<>();
+		htblDataSymbol = new Hashtable<>();
 
 // Order Number, Element Symbol, Atomic Weight, Covalent Radius, VdW radius
     arrData = new Element [] {

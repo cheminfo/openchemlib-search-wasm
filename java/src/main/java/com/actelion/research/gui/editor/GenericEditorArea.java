@@ -33,6 +33,8 @@
 
 package com.actelion.research.gui.editor;
 
+import org.cheminfo.utils.FakeFileInputStream;
+
 import com.actelion.research.chem.*;
 import com.actelion.research.chem.coords.CoordinateInventor;
 import com.actelion.research.chem.io.RDFileParser;
@@ -958,9 +960,44 @@ public class GenericEditorArea implements GenericEventListener {
 		return count == mol.getAllAtoms();
 		}
 
-	private void openReaction() {}
+	private void openReaction() {
+		File rxnFile = mUIHelper.openChemistryFile(true);
+		if (rxnFile != null) {
+			try {
+				Reaction reaction = null;
 
-	private void showWarningMessage(String msg) {}
+				if (FileHelper.getFileType(rxnFile) == FileHelper.cFileTypeRXN) {
+					reaction = new RXNFileParser().getReaction(rxnFile);
+				} else {
+					RDFileParser rdfParser = new RDFileParser(rxnFile);
+					if (rdfParser.isReactionNext())
+						reaction = rdfParser.getNextReaction();
+				}
+
+				if (reaction != null) {
+					for (int i = 0; i<reaction.getMolecules(); i++) {
+						reaction.getMolecule(i).setFragment(mMol.isFragment());
+					}
+					storeState();
+					setReaction(reaction);
+				}
+			} catch (Exception ex) {
+			}
+		}
+	}
+
+	private void showWarningMessage(String msg) {
+		mWarningMessage = msg;
+		mCanvas.repaint();
+		new Thread(() -> {
+			try {
+				Thread.sleep(WARNING_MILLIS);
+			} catch (InterruptedException ie) {
+			}
+			mWarningMessage = null;
+			mCanvas.repaint();
+		}).start();
+	}
 
 	private void eventHappened(GenericMouseEvent e) {
 		if (e.getWhat() == GenericMouseEvent.MOUSE_PRESSED) {
@@ -1511,7 +1548,7 @@ public class GenericEditorArea implements GenericEventListener {
 			popup.addSeparator();
 		popup.addItem(ITEM_SHOW_HELP, null, true);
 
-		if (false) {
+		if (System.getProperty("development") != null) {
 			if (popup == null)
 				popup = mUIHelper.createPopupMenu(this);
 			else
@@ -2943,7 +2980,7 @@ public class GenericEditorArea implements GenericEventListener {
 	 * Then, fires molecule change events with userChange=false, i.e. external change.
 	 * @param updateMode
 	 */
-	public void updateAndFireEvent(int updateMode) {
+	private void updateAndFireEvent(int updateMode) {
 		update(updateMode);
 		fireEventLater(new EditorEvent(this, EditorEvent.WHAT_MOLECULE_CHANGED, true));
 	}
@@ -3491,7 +3528,7 @@ public class GenericEditorArea implements GenericEventListener {
 /*	private void dumpBytesOfGif(String imageFileName) {
 		byte[] data = new byte[10000];
 		try {
-			BufferedInputStream in=new BufferedInputStream(getClass().getResourceAsStream(imageFileName));
+			BufferedInputStream in=new BufferedInputStream(FakeFileInputStream.getResourceAsStream(imageFileName));
 			int count = in.read(data);
 			Image image = Toolkit.getDefaultToolkit().createImage(data);
 			PixelGrabber pg = new PixelGrabber(image, 0, 0, 16, 16, false);

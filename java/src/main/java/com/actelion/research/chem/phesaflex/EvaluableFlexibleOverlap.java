@@ -595,6 +595,7 @@ public class EvaluableFlexibleOverlap implements Evaluable  {
 		return fitConf;
 	}
 
+	@Override
 	public EvaluableFlexibleOverlap clone() {
 		return new EvaluableFlexibleOverlap(this);
 	}

@@ -5,7 +5,6 @@ import com.actelion.research.chem.StereoMolecule;
 import com.actelion.research.chem.conf.Conformer;
 import com.actelion.research.chem.conf.TorsionDB;
 
-import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Random;
 
@@ -58,10 +57,8 @@ public class BaseConformer extends Conformer {
 		mLikelyhood = new double[rotatableBond.length][];
 		short[][][] defaultTorsionRange = new short[rotatableBond.length][][];
 		for (int bondIndex=0; bondIndex<rotatableBond.length; bondIndex++) {
-			short[] torsions = rotatableBond[bondIndex].getDefaultTorsions();
-			mTorsion[bondIndex] = Arrays.copyOf(torsions, torsions.length);
-			short[] frequencies = rotatableBond[bondIndex].getDefaultFrequencies();
-			mFrequency[bondIndex] = Arrays.copyOf(frequencies, frequencies.length);
+			mTorsion[bondIndex] = rotatableBond[bondIndex].getDefaultTorsions().clone();
+			mFrequency[bondIndex] = rotatableBond[bondIndex].getDefaultFrequencies().clone();
 			mLikelyhood[bondIndex] = new double[mTorsion[bondIndex].length];
 			defaultTorsionRange[bondIndex] = rotatableBond[bondIndex].getDefaultTorsionRanges();
 		}

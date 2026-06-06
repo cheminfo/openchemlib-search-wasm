@@ -38,8 +38,6 @@ import com.actelion.research.gui.generic.GenericPoint;
 import com.actelion.research.gui.generic.GenericRectangle;
 
 import java.awt.*;
-import java.math.BigDecimal;
-import java.math.MathContext;
 import java.util.ArrayList;
 
 public class TextDrawingObject extends AbstractDrawingObject {
@@ -147,7 +145,7 @@ public class TextDrawingObject extends AbstractDrawingObject {
 		detail.append(" x=\""+mPoint[0].x + "\"");
 		detail.append(" y=\""+mPoint[0].y + "\"");
 		if (mSize != DEFAULT_SIZE)
-			detail.append(" size=\""+new BigDecimal(mSize, new MathContext(4)).toString()+"\"");
+			detail.append(String.format(" size=\"%.4f\"", mSize));
 		if (mStyle != DEFAULT_STYLE)
 			detail.append(" style=\""+mStyle+ "\"");
 
