@@ -91,7 +91,6 @@ public class DruglikenessPredictor {
 			if (threadMaster != null && threadMaster.threadMustDie())
 				return cDruglikenessUnknown;
 
-			Thread.yield();
 
 			new IDCodeParser(false).parse(fragment, sIncrementTable.getFragment(i));
 			sss.setMol(fragment, mol);

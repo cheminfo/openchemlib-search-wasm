@@ -71,7 +71,6 @@ public class SizeOf
 //          System.runFinalization();
 			System.gc();
 
-            Thread.yield();
             
             usedMem2 = usedMem1;
             usedMem1 = usedMemory ();

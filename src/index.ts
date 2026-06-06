@@ -8,7 +8,6 @@ export const Molecule = ocl.Molecule;
 export const SmilesParser = ocl.SmilesParser;
 export const SSSearcher = ocl.SSSearcher;
 export const SSSearcherWithIndex = ocl.SSSearcherWithIndex;
-export const Resources = ocl.Resources;
 export const ForceFieldMMFF94 = ocl.ForceFieldMMFF94;
 export const ConformerGenerator = ocl.ConformerGenerator;
 export const DruglikenessPredictor = ocl.DruglikenessPredictor;

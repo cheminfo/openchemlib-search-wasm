@@ -1,48 +1,30 @@
-import type { LoadOptions, OCL } from '../types.ts';
+import type { OCL } from '../types.ts';
 
 import { wasmGzipBase64 } from './data.ts';
-import { resourcesGzipBase64 } from './resources.ts';
 import { load } from './runtime.js';
 
 let modulePromise: Promise<OCL> | undefined;
-let resourcesRegistered = false;
 
 /**
  * Loads and instantiates the embedded OpenChemLib WasmGC module. The module is
- * compiled once and cached; subsequent calls return the same instance. Decoding
- * uses only Web Platform APIs (atob + DecompressionStream), so it works the same
- * in Node and the browser with no filesystem or fetch.
+ * compiled once and cached; subsequent calls return the same instance. The
+ * parameter tables (force field, predictors, torsion data) are bundled inside
+ * the wasm, so the force field, conformer generator and predictors work with no
+ * separate registration step. Decoding uses only Web Platform APIs (atob +
+ * DecompressionStream), so it works the same in Node and the browser with no
+ * filesystem or fetch.
  *
- * Pass `{ resources: true }` to also register the bundled parameter tables, which
- * the force field, conformer generator and predictors require.
- *
- * @param options load options
  * @returns the OpenChemLib WASM exports
  */
-export async function loadOCL(options?: LoadOptions): Promise<OCL> {
+export function loadOCL(): Promise<OCL> {
   modulePromise ??= instantiate();
-  const ocl = await modulePromise;
-  if (options?.resources && !resourcesRegistered) {
-    await registerEmbeddedResources(ocl);
-    resourcesRegistered = true;
-  }
-  return ocl;
+  return modulePromise;
 }
 
 async function instantiate(): Promise<OCL> {
   const wasmBytes = await gunzip(base64ToBytes(wasmGzipBase64));
   const teavm = await load(wasmBytes);
   return teavm.exports as unknown as OCL;
-}
-
-async function registerEmbeddedResources(ocl: OCL): Promise<void> {
-  const json = new TextDecoder().decode(
-    await gunzip(base64ToBytes(resourcesGzipBase64)),
-  );
-  const bundle = JSON.parse(json) as Record<string, string>;
-  for (const [path, content] of Object.entries(bundle)) {
-    ocl.Resources.register(path, content);
-  }
 }
 
 function base64ToBytes(base64: string): Uint8Array {

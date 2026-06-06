@@ -9,7 +9,6 @@ public class ToxicityPredictor {
   /** Creates a toxicity predictor. */
   @JSExport
   public ToxicityPredictor() {
-    Resources.checkHasRegistered();
     this.predictor = new com.actelion.research.chem.prediction.ToxicityPredictor();
   }
 

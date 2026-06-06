@@ -1,21 +1,21 @@
-import { beforeAll, expect, test } from 'vitest';
+import { expect, test } from 'vitest';
 
-import { loadOCL } from '#lib';
-import type { OCL } from '../src/types.ts';
+import {
+  ConformerGenerator,
+  DruglikenessPredictor,
+  ForceFieldMMFF94,
+  Molecule,
+  ToxicityPredictor,
+} from '#lib';
 
-// Proves the loadOCL({ resources }) mechanism end to end: registering the bundled
-// parameter tables makes the resource-loaded classes actually compute.
-let ocl: OCL;
-beforeAll(async () => {
-  ocl = await loadOCL({ resources: true });
-});
+// The parameter tables are bundled inside the wasm, so the resource-loaded
+// classes work with no registration step.
 
-test('force field computes and minimises after loadOCL({ resources })', () => {
-  const molecule = ocl.Molecule.fromSmiles('COCCON');
-  const generator = new ocl.ConformerGenerator(1);
-  generator.getOneConformerAsMolecule(molecule);
+test('MMFF94 force field computes and minimises', () => {
+  const molecule = Molecule.fromSmiles('COCCON');
+  new ConformerGenerator(1).getOneConformerAsMolecule(molecule);
 
-  const forceField = new ocl.ForceFieldMMFF94(molecule, 'MMFF94');
+  const forceField = new ForceFieldMMFF94(molecule, 'MMFF94');
   expect(forceField.size()).toBeGreaterThan(0);
 
   const before = forceField.getTotalEnergy();
@@ -25,9 +25,12 @@ test('force field computes and minimises after loadOCL({ resources })', () => {
   expect(forceField.getTotalEnergy()).toBeLessThanOrEqual(before);
 });
 
-// The predictor constructors correctly gate on registered resources (see
-// resources.test.ts). Their full computation (assessDruglikeness / assessRisk)
-// still throws a null-pointer dereference inside OCL — a predictor-specific
-// descriptor/resource detail to debug next, not a problem with the registration
-// mechanism (which the force-field test above exercises end to end).
-test.todo('druglikeness / toxicity full computation');
+test('predictors compute, byte-identical to openchemlib-js', () => {
+  const molecule = Molecule.fromSmiles('COCCON');
+
+  expect(new DruglikenessPredictor().assessDruglikeness(molecule)).toBe(
+    -4.564473319220205,
+  );
+  // riskType 0 = mutagenic; 3 = RISK_HIGH
+  expect(new ToxicityPredictor().assessRisk(molecule, 0)).toBe(3);
+});

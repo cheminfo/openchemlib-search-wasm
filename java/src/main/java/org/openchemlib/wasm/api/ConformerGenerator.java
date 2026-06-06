@@ -15,7 +15,6 @@ public class ConformerGenerator {
    */
   @JSExport
   public ConformerGenerator(int seed) {
-    Resources.checkHasRegistered();
     this.generator = new org.openmolecules.chem.conf.gen.ConformerGenerator(seed, false);
   }
 

@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "npm run build-wasm && npm run build-embed",
-    "build-embed": "node build/embed-wasm.mjs && node build/embed-resources.mjs",
+    "build-embed": "node build/embed-wasm.mjs",
     "build-wasm": "mvn -B -f java/pom.xml process-classes",
     "copy:openchemlib": "node scripts/copy-openchemlib.mjs",
     "check-types": "tsc --noEmit",

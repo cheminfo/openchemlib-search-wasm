@@ -114,10 +114,6 @@ export interface ConformerInitOptions {
   use60degreeSteps?: boolean;
 }
 
-export interface ResourcesStatic {
-  register(path: string, content: string): void;
-}
-
 export interface ForceFieldMMFF94 {
   size(): number;
   getTotalEnergy(): number;
@@ -168,15 +164,8 @@ export interface OCL {
   SmilesParser: SmilesParserConstructor;
   SSSearcher: SSSearcherConstructor;
   SSSearcherWithIndex: SSSearcherWithIndexConstructor;
-  Resources: ResourcesStatic;
   ForceFieldMMFF94: ForceFieldMMFF94Constructor;
   ConformerGenerator: ConformerGeneratorConstructor;
   DruglikenessPredictor: DruglikenessPredictorConstructor;
   ToxicityPredictor: ToxicityPredictorConstructor;
-}
-
-/** Options for loadOCL. */
-export interface LoadOptions {
-  /** Register the bundled parameter tables (force field, predictors, torsion data). @default false */
-  resources?: boolean;
 }

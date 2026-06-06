@@ -19,7 +19,6 @@ public class ForceFieldMMFF94 {
    */
   @JSExport
   public ForceFieldMMFF94(Molecule molecule, String tablename) {
-    Resources.checkHasRegistered();
     initializeTables(tablename);
     this.forceField =
         new com.actelion.research.chem.forcefield.mmff.ForceFieldMMFF94(

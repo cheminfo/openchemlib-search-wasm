@@ -17,7 +17,6 @@ public final class Entry {
     use(SmilesParser.class);
     use(SSSearcher.class);
     use(SSSearcherWithIndex.class);
-    use(Resources.class);
     use(ForceFieldMMFF94.class);
     use(ConformerGenerator.class);
     use(DruglikenessPredictor.class);

@@ -128,7 +128,6 @@ public class ToxicityPredictor {
 			if (threadMaster != null && threadMaster.threadMustDie())
 				return cUnknownRisk;
 
-			Thread.yield();
 
 			new IDCodeParser(false).parse(fragment, sHighRiskFragments[riskType].get(i));
 			sss.setMol(fragment, mol);
@@ -140,7 +139,6 @@ public class ToxicityPredictor {
 			if (threadMaster != null && threadMaster.threadMustDie())
 				return cUnknownRisk;
 
-			Thread.yield();
 
 			new IDCodeParser(false).parse(fragment, sLowRiskFragments[riskType].get(i));
 			sss.setMol(fragment, mol);

@@ -9,7 +9,6 @@ public class DruglikenessPredictor {
   /** Creates a druglikeness predictor. */
   @JSExport
   public DruglikenessPredictor() {
-    Resources.checkHasRegistered();
     this.predictor = new com.actelion.research.chem.prediction.DruglikenessPredictor();
   }
 
