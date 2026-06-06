@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.openchemlib</groupId>
+  <artifactId>openchemlib-wasm-java</artifactId>
+  <version>0.0.0</version>
+  <packaging>jar</packaging>
+
+  <!--
+    Compiles the OpenChemLib subset reachable from the @JSExport facade
+    (org.openchemlib.wasm.api.*) to a single WasmGC module. Build with JDK >= 11
+    (this repo uses 21). See ../README.md for the toolchain rationale and the two
+    build gotchas (teavm-core scope; on-demand -sourcepath compilation).
+  -->
+
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <teavm.version>0.14.1</teavm.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.teavm</groupId>
+      <artifactId>teavm-classlib</artifactId>
+      <version>${teavm.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.teavm</groupId>
+      <artifactId>teavm-core</artifactId>
+      <version>${teavm.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.teavm</groupId>
+      <artifactId>teavm-jso</artifactId>
+      <version>${teavm.version}</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <!-- Compile only the facade; javac pulls the reachable OCL closure on
+               demand via -sourcepath, skipping the off-path files that reference
+               excluded packages (conformer/docking/editor/flexophore). -->
+          <includes>
+            <include>org/openchemlib/wasm/api/*.java</include>
+          </includes>
+          <compilerArgs>
+            <arg>-sourcepath</arg>
+            <arg>${project.basedir}/src/main/java</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.teavm</groupId>
+        <artifactId>teavm-maven-plugin</artifactId>
+        <version>${teavm.version}</version>
+        <executions>
+          <execution>
+            <id>wasm-gc-compile</id>
+            <phase>process-classes</phase>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+            <configuration>
+              <targetType>WEBASSEMBLY_GC</targetType>
+              <mainClass>org.openchemlib.wasm.api.Entry</mainClass>
+              <targetDirectory>${project.build.directory}/wasm-gc</targetDirectory>
+              <targetFileName>openchemlib.wasm</targetFileName>
+              <minifying>true</minifying>
+              <optimizationLevel>FULL</optimizationLevel>
+              <strict>false</strict>
+              <assertionsRemoved>true</assertionsRemoved>
+            </configuration>
+          </execution>
+          <execution>
+            <id>wasm-gc-runtime</id>
+            <phase>process-classes</phase>
+            <goals>
+              <goal>copy-webassembly-gc-runtime</goal>
+            </goals>
+            <configuration>
+              <targetDirectory>${project.build.directory}/wasm-gc</targetDirectory>
+              <runtimeFileName>openchemlib.wasm-runtime.js</runtimeFileName>
+              <modular>true</modular>
+              <minified>true</minified>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

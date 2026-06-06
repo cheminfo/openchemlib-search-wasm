@@ -1,0 +1,6 @@
+target
+node_modules
+coverage
+.claude
+.DS_Store
+*.log
