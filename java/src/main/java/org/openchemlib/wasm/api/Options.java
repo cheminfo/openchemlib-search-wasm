@@ -38,6 +38,41 @@ public final class Options {
 
     @JSProperty
     boolean isNoStereo();
+
+    /** Raw value of the optional destination molecule, for a presence check. */
+    @JSProperty("molecule")
+    JSObject getMoleculeRaw();
+
+    /** Optional destination molecule to parse into (parse-time option). */
+    @JSProperty("molecule")
+    Molecule getMolecule();
+  }
+
+  /** Options for {@link Molecule#addImplicitHydrogens}. */
+  public interface ImplicitHydrogens extends JSObject {
+    /** Raw value: absent means "all atoms", a number means a single atom. */
+    @JSProperty
+    JSObject getAtom();
+  }
+
+  /** Options for {@link Molecule#inventCoordinates}. */
+  public interface Invent extends JSObject {
+    @JSProperty
+    boolean isSkipDefaultTemplates();
+
+    /** Raw value: default is false, but kept raw to mirror the JS API. */
+    @JSProperty
+    JSObject getKeepHydrogens();
+
+    @JSProperty
+    boolean isKeepMarkedAtomCoordinates();
+
+    @JSProperty
+    boolean isPreferMarkedAtomCoordinates();
+
+    /** Raw value: absent means seed 0; a negative value means a random seed. */
+    @JSProperty
+    JSObject getSeed();
   }
 
   /** Match-mode options for substructure search. */
@@ -62,6 +97,42 @@ public final class Options {
     String getCountMode();
   }
 
+  /** Mode options for canonization. */
+  public interface Canonizer extends JSObject {
+    @JSProperty
+    boolean isCreateSymmetryRank();
+
+    @JSProperty
+    boolean isConsiderStereoheterotopicity();
+
+    @JSProperty
+    boolean isEncodeAtomCustomLabels();
+
+    @JSProperty
+    boolean isEncodeAtomSelection();
+
+    @JSProperty
+    boolean isAssignParitiesToTetrahedralN();
+
+    @JSProperty
+    boolean isCoordsAre3d();
+
+    @JSProperty
+    boolean isCreatePseudoStereoGroups();
+
+    @JSProperty
+    boolean isDistinguishRacemicOrGroups();
+
+    @JSProperty
+    boolean isTieBreakFreeValenceAtoms();
+
+    @JSProperty
+    boolean isEncodeAtomCustomLabelsWithoutRanking();
+
+    @JSProperty
+    boolean isNeglectAnyStereoInformation();
+  }
+
   /** Options for conformer enumeration initialization. */
   public interface ConformerInit extends JSObject {
     @JSProperty
@@ -72,5 +143,39 @@ public final class Options {
 
     @JSProperty
     boolean isUse60degreeSteps();
+  }
+
+  /** Options for serializing a reaction to an RXN file. */
+  public interface ToRxn extends JSObject {
+    @JSProperty
+    String getProgramName();
+
+    @JSProperty
+    boolean isKeepIdCode();
+  }
+
+  /** Options for encoding a reaction with {@link ReactionEncoder}. */
+  public interface ReactionEncode extends JSObject {
+    /** Raw value: present-or-absent selects the sort vs. mode overload. */
+    @JSProperty
+    JSObject getSortByIDCode();
+
+    /** Raw value: present-or-absent selects the mode overload. */
+    @JSProperty
+    JSObject getMode();
+
+    @JSProperty
+    boolean isKeepAbsoluteCoordinates();
+  }
+
+  /** Options for decoding a reaction with {@link ReactionEncoder}. */
+  public interface ReactionDecode extends JSObject {
+    /** Raw value: present-or-absent selects the ensureCoordinates vs. mode overload. */
+    @JSProperty
+    JSObject getEnsureCoordinates();
+
+    /** Raw value: present-or-absent selects the mode overload. */
+    @JSProperty
+    JSObject getMode();
   }
 }

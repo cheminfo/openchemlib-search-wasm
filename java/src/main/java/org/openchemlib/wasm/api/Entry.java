@@ -21,6 +21,15 @@ public final class Entry {
     use(ConformerGenerator.class);
     use(DruglikenessPredictor.class);
     use(ToxicityPredictor.class);
+    use(MoleculeProperties.class);
+    use(RingCollection.class);
+    use(Canonizer.class);
+    use(CanonizerUtil.class);
+    use(Reaction.class);
+    use(ReactionEncoder.class);
+    use(Reactor.class);
+    use(Transformer.class);
+    use(DrugScoreCalculator.class);
   }
 
   private static void use(Class<?> clazz) {

@@ -64,6 +64,27 @@ are hand-written and preserved across re-vendoring.
 | Build a `{a, b}` object | `interface R extends JSObject` with `@JSProperty` setters; `R r = JSObjects.create().cast()` |
 | Throw an error JS can read | `throw new IllegalArgumentException(message)`; `error.message` carries it. Wrap checked OCL exceptions: `catch (Exception e) { throw new IllegalArgumentException(e.getMessage()); }` |
 
+## Interop gotchas (learned the hard way)
+
+- **Object-array params crash codegen.** A `@JSExport` method taking an array of
+  exported objects (e.g. `Molecule[]`) makes TeaVM emit an invalid WasmGC module
+  (`CompileError: ... array.get of type ...`). Build from single-object calls
+  instead — e.g. `Reaction.fromMolecules` is a TS helper looping `addReactant`/`addProduct`.
+- **`@JSExport getX()` is a METHOD, not a property.** GWT `@JsProperty` exposed
+  `.x`; TeaVM exposes `getX()`. To keep the openchemlib-js property API: return
+  value-objects as plain JS objects (a `@JSProperty`-setter `JSObject`, e.g.
+  `Molecule.getMolecularFormula()`), or wrap a constructed class in a thin TS
+  getter-class (e.g. `MoleculeProperties` in index.ts).
+- **Reading a facade object out of an options bag** via a facade-typed
+  `@JSProperty Molecule getMolecule()` crashes (`Symbol(javaObject)` of undefined)
+  when the property is absent. Read a raw `@JSProperty("molecule") JSObject` first
+  for the presence check, then unwrap with the facade-typed getter (same explicit
+  property name). See `SmilesParser.parseMolecule`.
+- **Static constants can't be `@JSExport`ed** (`@JSExport` targets METHOD/CONSTRUCTOR
+  only). Attach them in index.ts: `Object.assign(ToxicityPredictor, { RISK_HIGH: 3, ... })`.
+- **`Thread.yield()`/suspension points** become Fiber coroutines that NPE when
+  called synchronously — stripped by the vendoring script (see Vendoring).
+
 ## Sanctioned differences from openchemlib-js (optimization-justified)
 
 - **Typed arrays** instead of plain arrays for numeric returns.
@@ -102,13 +123,19 @@ vendoring script (see "Vendoring upstream OpenChemLib"). `org.openmolecules`
 
 ## Status
 
-Done & green (25 tests): **Molecule** (core + toMolfile), **SmilesParser**,
-**SSSearcher**, **SSSearcherWithIndex**, **ForceFieldMMFF94** (conformer→tables→minimise
-end to end), **ConformerGenerator**, **DruglikenessPredictor**, **ToxicityPredictor**.
-idcodes, 512 fingerprint keys, and predictor outputs all byte-identical to
+Done & green (**110 tests, 3 skipped**): **Molecule** (core + a large method
+surface), **SmilesParser**, **SSSearcher**/**SSSearcherWithIndex**, **ForceFieldMMFF94**,
+**ConformerGenerator**, **DruglikenessPredictor**/**ToxicityPredictor** (incl. detail),
+**DrugScoreCalculator**, **MolecularFormula**, **MoleculeProperties**, **RingCollection**,
+**Canonizer**/**CanonizerUtil**, **Reaction**/**ReactionEncoder**/**Reactor**,
+**Transformer**. idcodes, fingerprint keys and predictor outputs byte-identical to
 openchemlib-js.
 
-Remaining (same pattern): the rest of `Molecule`'s 284 methods; `Canonizer`,
-`CanonizerUtil`, `MolecularFormula`, `MoleculeProperties`, `RingCollection`,
-`Reaction`/`ReactionEncoder`/`Reactor`, `SDFileParser`, `Transformer`, `Util`, and
-`toSVG` (needs tiny `java.awt.Color`/Helvetica shims). `CanvasEditor`/GUI: out of scope.
+3 skipped (`TODO(wasm)`, known WasmGC-specific bugs to investigate): `addImplicitHydrogens('N')`
+array-out-of-bounds; `inventCoordinates` seed not varying the layout; `Canonizer`
+custom-label idcode byte difference.
+
+Remaining: the rest of `Molecule`'s 284 methods (esp. query features + constants,
+which need a static-constants strategy); `SDFileParser`, `Util`; `toSVG` (needs the
+tiny `java.awt.Color`/Helvetica shims); molfile-parser tests; the `.d.ts` (types.ts)
+merge + eslint/check-types alignment. `CanvasEditor`/GUI: out of scope.

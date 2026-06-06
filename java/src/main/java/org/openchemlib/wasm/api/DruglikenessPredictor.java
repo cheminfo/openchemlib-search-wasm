@@ -1,6 +1,8 @@
 package org.openchemlib.wasm.api;
 
+import com.actelion.research.chem.prediction.ParameterizedStringList;
 import org.teavm.jso.JSExport;
+import org.teavm.jso.core.JSArray;
 
 /** WASM facade for the druglikeness predictor. Requires registered resources. */
 public class DruglikenessPredictor {
@@ -32,5 +34,20 @@ public class DruglikenessPredictor {
   @JSExport
   public String getDruglikenessString(Molecule molecule) {
     return predictor.getDruglikenessString(molecule.getStereoMolecule());
+  }
+
+  /**
+   * The fragment-contribution detail from the most recent druglikeness
+   * assessment, as an array of {@code { type, value }} objects.
+   *
+   * @return the detail array
+   */
+  @JSExport
+  public JSArray<Predictors.Detail> getDetail() {
+    ParameterizedStringList detail = predictor.getDetail();
+    if (detail == null) {
+      throw new IllegalStateException("drug likeness must be assessed first");
+    }
+    return Predictors.convertParameterizedStringList(detail);
   }
 }

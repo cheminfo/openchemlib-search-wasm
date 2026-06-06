@@ -23,24 +23,47 @@ public class SmilesParser {
   }
 
   /**
-   * Parses a SMILES string into a new molecule.
+   * Sets the random seed used during coordinate invention so that successive
+   * parses are reproducible.
+   *
+   * @param seed the random seed
+   */
+  @JSExport
+  public void setRandomSeed(int seed) {
+    parser.setRandomSeed((long) seed);
+  }
+
+  /**
+   * Parses a SMILES string into a molecule. If {@code options.molecule} is set,
+   * the SMILES is parsed into that molecule and the same instance is returned;
+   * otherwise a new molecule is created.
    *
    * @param smiles the SMILES string
-   * @param options parse options (noCoordinates, noStereo), or undefined
+   * @param options parse options (molecule, noCoordinates, noStereo), or undefined
    * @return the parsed molecule
    */
   @JSExport
   public Molecule parseMolecule(String smiles, Options.Smiles options) {
-    StereoMolecule molecule = new StereoMolecule();
     boolean present = options != null && !JSObjects.isUndefined(options);
+    // Read the optional destination molecule as a raw value first so an absent
+    // property does not crash the facade-typed unwrap.
+    org.teavm.jso.JSObject rawMolecule = present ? options.getMoleculeRaw() : null;
+    Molecule target =
+        (rawMolecule != null && !JSObjects.isUndefined(rawMolecule))
+            ? options.getMolecule()
+            : new Molecule(new StereoMolecule());
     boolean createCoordinates = !present || !options.isNoCoordinates();
     boolean readStereoFeatures = !present || !options.isNoStereo();
     try {
-      parser.parse(molecule, smiles.getBytes(StandardCharsets.UTF_8), createCoordinates, readStereoFeatures);
+      parser.parse(
+          target.getStereoMolecule(),
+          smiles.getBytes(StandardCharsets.UTF_8),
+          createCoordinates,
+          readStereoFeatures);
     } catch (Exception e) {
       throw new IllegalArgumentException(e.getMessage());
     }
-    return new Molecule(molecule);
+    return target;
   }
 
   /**
