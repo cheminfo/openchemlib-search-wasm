@@ -217,7 +217,7 @@ public class HydrogenHandler {
 			int iNew;
 			double dx;
 			double dy;
-			if (molecule.getConnAtom(iAtom, 0)>0) {
+			if (molecule.getConnAtoms(iAtom) > 0 && molecule.getConnAtom(iAtom, 0)>0) {
 				dx = (x - molecule.getAtomX(molecule.getConnAtom(iAtom, 0)))*H_BOND_RATIO;
 				dy = (y - molecule.getAtomY(molecule.getConnAtom(iAtom, 0)))*H_BOND_RATIO;
 				// backwards

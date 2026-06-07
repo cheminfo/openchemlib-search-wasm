@@ -129,6 +129,15 @@ for (const file of walk(javaDir)) {
   if (file.endsWith('RigidFragmentCache.java')) {
     code = patchRigidFragmentCache(code);
   }
+  if (file.endsWith('HydrogenHandler.java')) {
+    // OCL reads getConnAtom(iAtom, 0) to test for a neighbour; with 0 neighbours
+    // (e.g. ammonia) that is an out-of-bounds access GWT tolerates but WasmGC
+    // traps. Short-circuit on getConnAtoms() first (reproduces GWT behaviour).
+    code = code.replace(
+      'if (molecule.getConnAtom(iAtom, 0)>0) {',
+      'if (molecule.getConnAtoms(iAtom) > 0 && molecule.getConnAtom(iAtom, 0)>0) {',
+    );
+  }
   if (code !== original) {
     writeFileSync(file, code);
     patched++;

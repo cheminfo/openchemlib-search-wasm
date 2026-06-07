@@ -13,9 +13,7 @@ describe('addImplicitHydroens', () => {
     expect(molecule.getAllAtoms()).toBe(8);
   });
 
-  // TODO(wasm): addImplicitHydrogens on ammonia throws "array element access out
-  // of bounds" inside OCL under WasmGC (C/Cl/O pass). Needs investigation.
-  it.skip('N', () => {
+  it('N', () => {
     const molecule = Molecule.fromSmiles('N');
 
     expect(molecule.getAllAtoms()).toBe(1);
