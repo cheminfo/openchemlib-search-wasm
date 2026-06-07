@@ -150,8 +150,12 @@ for (const file of walk(javaDir)) {
   // TeaVM resolves java.* only from its own classlib, which lacks java.awt.Font,
   // Graphics2D, BufferedImage, geom, etc. (and has an incomplete Color). The SVG
   // depiction closure's AWT references are therefore repackaged onto our pure-Java
-  // shims in org.cheminfo.awt.
-  if (code.includes('java.awt')) {
+  // shims in org.cheminfo.awt. We restrict this to the depiction closure (com/,
+  // org/): the AWT-heavy Swing layout lib under info/ is compiled by javac (via
+  // the JDK's java.awt) but dropped by TeaVM's dead-code elimination, so it must
+  // keep its java.awt references (it uses Component/Container/… which we do not
+  // shim, and repackaging them would break javac).
+  if (code.includes('java.awt') && !file.includes('/info/')) {
     code = code.replaceAll(/\bjava\.awt\b/g, 'org.cheminfo.awt');
   }
   if (code !== original) {
