@@ -51,9 +51,7 @@ test('smaller sphere size yields a prefix of the larger result', () => {
 test('defaults maxSphereSize to 5 and type to 0 when options are omitted', () => {
   const id = firstDiastereotopicID('CCCCCCCC');
 
-  const withDefaults = Array.from(
-    Util.getHoseCodesFromDiastereotopicID(id),
-  );
+  const withDefaults = Array.from(Util.getHoseCodesFromDiastereotopicID(id));
   const explicit = Array.from(
     Util.getHoseCodesFromDiastereotopicID(id, { maxSphereSize: 5, type: 0 }),
   );

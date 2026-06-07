@@ -14,8 +14,12 @@ test('simple ring', () => {
   const coll = mol.getRingSet();
 
   expect(coll.getSize()).toBe(1);
-  expect(coll.getRingAtoms(0).slice()).toStrictEqual(Int32Array.of(2, 3, 4, 5, 6, 7));
-  expect(coll.getRingBonds(0).slice()).toStrictEqual(Int32Array.of(2, 3, 4, 5, 6, 7));
+  expect(coll.getRingAtoms(0).slice()).toStrictEqual(
+    Int32Array.of(2, 3, 4, 5, 6, 7),
+  );
+  expect(coll.getRingBonds(0).slice()).toStrictEqual(
+    Int32Array.of(2, 3, 4, 5, 6, 7),
+  );
   expect(coll.getRingSize(0)).toBe(6);
   expect(coll.isAromatic(0)).toBe(false);
   expect(coll.isDelocalized(0)).toBe(false);
@@ -30,8 +34,12 @@ test('aromatic ring', () => {
   const coll = mol.getRingSet();
 
   expect(coll.getSize()).toBe(1);
-  expect(coll.getRingAtoms(0).slice()).toStrictEqual(Int32Array.of(2, 3, 4, 5, 6, 7));
-  expect(coll.getRingBonds(0).slice()).toStrictEqual(Int32Array.of(2, 3, 4, 5, 6, 7));
+  expect(coll.getRingAtoms(0).slice()).toStrictEqual(
+    Int32Array.of(2, 3, 4, 5, 6, 7),
+  );
+  expect(coll.getRingBonds(0).slice()).toStrictEqual(
+    Int32Array.of(2, 3, 4, 5, 6, 7),
+  );
   expect(coll.getRingSize(0)).toBe(6);
   expect(coll.isAromatic(0)).toBe(true);
   expect(coll.isDelocalized(0)).toBe(true);
