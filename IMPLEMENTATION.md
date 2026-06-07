@@ -121,9 +121,25 @@ removal and `RigidFragmentCache` disk-method removal are all applied by the
 vendoring script (see "Vendoring upstream OpenChemLib"). `org.openmolecules`
 (conformer) is a second vendored source root alongside `com`.
 
+## toSVG / AWT shims
+
+`toSVG` renders via OCL's `SVGDepictor`, which needs `java.awt`. TeaVM resolves
+`java.*` **only** from its own classlib (which lacks `Font`/`Graphics2D`/
+`BufferedImage`/geom and has an incomplete `Color`), so the depiction closure's
+AWT references are **repackaged** `java.awt → org.cheminfo.awt` onto pure-Java
+shims (adapted from openchemlib-js `gwt/jre`: JSNI removed, the Helvetica
+width-table path kept — SVGDepictor hardcodes Helvetica). The Swing-heavy
+`HiDPIHelper`/`HiDPIIcon` are overlaid with openchemlib-js's headless modified
+versions (`scripts/modified/`). The repackaging is scoped to `com/`+`org/` — the
+unreachable Swing layout lib under `info/` keeps real `java.awt` (javac resolves
+it via the JDK; TeaVM drops it). `Molecule._toSVG` is the primitive; a TS `toSVG`
+wrapper mirrors openchemlib-js `extend_to_svg.js`. All in `copy-openchemlib.mjs`
+(reproduces the tree with zero drift).
+
 ## Status
 
-Done & green (**110 tests, 3 skipped**): **Molecule** (core + a large method
+Done & green (**218 tests, 4 skipped**): full openchemlib-js suite incl. **toSVG**.
+Earlier milestone (110 tests, 3 skipped): **Molecule** (core + a large method
 surface), **SmilesParser**, **SSSearcher**/**SSSearcherWithIndex**, **ForceFieldMMFF94**,
 **ConformerGenerator**, **DruglikenessPredictor**/**ToxicityPredictor** (incl. detail),
 **DrugScoreCalculator**, **MolecularFormula**, **MoleculeProperties**, **RingCollection**,
