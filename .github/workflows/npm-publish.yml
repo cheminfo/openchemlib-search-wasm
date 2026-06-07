@@ -1,0 +1,36 @@
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+# Publishing must rebuild the WasmGC module so the tarball ships a fresh
+# dist/data.ts + dist/runtime.js (both gitignored, included via package.json
+# `files`). `.npmrc` sets ignore-scripts=true, which disables the prepack
+# lifecycle, so we build explicitly before `npm publish`. Needs the JDK 21 +
+# Maven toolchain; the OCL sources are vendored, so no submodule checkout.
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # Guard: never publish a wasm that fails its runtime tests.
+      - run: npm run test-only
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_BOT_TOKEN }}

@@ -1,7 +1,6 @@
+import { wasmGzipBase64 } from '../../dist/data.ts';
+import { load } from '../../dist/runtime.js';
 import type { OCL } from '../types.ts';
-
-import { wasmGzipBase64 } from './data.ts';
-import { load } from './runtime.js';
 
 let modulePromise: Promise<OCL> | undefined;
 
@@ -13,7 +12,6 @@ let modulePromise: Promise<OCL> | undefined;
  * separate registration step. Decoding uses only Web Platform APIs (atob +
  * DecompressionStream), so it works the same in Node and the browser with no
  * filesystem or fetch.
- *
  * @returns the OpenChemLib WASM exports
  */
 export function loadOCL(): Promise<OCL> {
@@ -27,16 +25,18 @@ async function instantiate(): Promise<OCL> {
   return teavm.exports as unknown as OCL;
 }
 
-function base64ToBytes(base64: string): Uint8Array {
+function base64ToBytes(base64: string): Uint8Array<ArrayBuffer> {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
+    bytes[i] = binary.codePointAt(i) ?? 0;
   }
   return bytes;
 }
 
-async function gunzip(bytes: Uint8Array): Promise<Uint8Array> {
+async function gunzip(
+  bytes: Uint8Array<ArrayBuffer>,
+): Promise<Uint8Array<ArrayBuffer>> {
   const stream = new Blob([bytes])
     .stream()
     .pipeThrough(new DecompressionStream('gzip'));

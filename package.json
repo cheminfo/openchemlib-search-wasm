@@ -14,13 +14,13 @@
     "build": "npm run build-wasm && npm run build-embed",
     "build-embed": "node build/embed-wasm.mjs",
     "build-wasm": "node scripts/build-wasm.mjs",
-    "copy:openchemlib": "node scripts/copy-openchemlib.mjs",
     "check-types": "tsc --noEmit",
+    "copy:openchemlib": "node scripts/copy-openchemlib.mjs",
     "eslint": "eslint src",
     "eslint-fix": "eslint src --fix",
     "prettier": "prettier --check src",
     "prettier-write": "prettier --write src",
-    "test": "npm run test-only && npm run check-types && npm run eslint && npm run prettier",
+    "test": "npm run build && npm run test-only && npm run check-types && npm run eslint && npm run prettier",
     "test-only": "vitest run"
   },
   "exports": {
@@ -29,6 +29,10 @@
   "imports": {
     "#lib": "./src/index.ts"
   },
+  "files": [
+    "dist",
+    "src"
+  ],
   "license": "BSD-3-Clause",
   "devDependencies": {
     "@types/node": "^25.6.0",
