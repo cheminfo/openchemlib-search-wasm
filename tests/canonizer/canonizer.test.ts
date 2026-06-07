@@ -193,7 +193,10 @@ test('setParities, getGraphAtoms, and getGraphIndexes produce consistent results
 });
 
 // TODO(wasm): with encodeAtomCustomLabels, the idcode contains an extra 
-// byte vs openchemlib-js (a custom-label encoding difference under WasmGC).
+// byte vs openchemlib-js: the idcode's custom-label feature section is packed
+// with ~6 extra bits (an idcode bit-packing divergence in this rarely-used
+// feature). NOT a UTF/representation issue — the label is stored byte-correct
+// ('label' -> 108,97,98,101,108) and the structure idcode is byte-identical.
 test.skip('Constructor with mode parameter works', () => {
   const moleculeTautomer = Molecule.fromSmiles('CC=C(O)CC');
   let canonizer = new Canonizer(moleculeTautomer);

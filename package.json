@@ -13,7 +13,7 @@
   "scripts": {
     "build": "npm run build-wasm && npm run build-embed",
     "build-embed": "node build/embed-wasm.mjs",
-    "build-wasm": "mvn -B -f java/pom.xml process-classes",
+    "build-wasm": "node scripts/build-wasm.mjs",
     "copy:openchemlib": "node scripts/copy-openchemlib.mjs",
     "check-types": "tsc --noEmit",
     "eslint": "eslint src",
