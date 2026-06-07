@@ -32,7 +32,7 @@
 */
 package com.actelion.research.gui.wmf;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 
 public abstract class MetaFile

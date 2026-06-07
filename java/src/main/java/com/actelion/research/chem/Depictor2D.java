@@ -36,11 +36,11 @@ package com.actelion.research.chem;
 
 import com.actelion.research.gui.generic.GenericPolygon;
 
-import java.awt.*;
-import java.awt.font.GlyphVector;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.GeneralPath;
-import java.awt.geom.Line2D;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.font.GlyphVector;
+import org.cheminfo.awt.geom.Ellipse2D;
+import org.cheminfo.awt.geom.GeneralPath;
+import org.cheminfo.awt.geom.Line2D;
 import java.util.ArrayList;
 
 public class Depictor2D extends AbstractDepictor<Graphics2D> {

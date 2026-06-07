@@ -7,12 +7,12 @@ import com.actelion.research.gui.generic.GenericPolygon;
 import com.actelion.research.gui.generic.GenericRectangle;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.font.GlyphVector;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.GeneralPath;
-import java.awt.geom.Line2D;
-import java.awt.geom.Rectangle2D;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.font.GlyphVector;
+import org.cheminfo.awt.geom.Ellipse2D;
+import org.cheminfo.awt.geom.GeneralPath;
+import org.cheminfo.awt.geom.Line2D;
+import org.cheminfo.awt.geom.Rectangle2D;
 
 public class SwingDrawContext implements GenericDrawContext {
 	private static boolean isMac = (System.getProperty("os.name").toLowerCase().indexOf("mac") >= 0);

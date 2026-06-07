@@ -240,14 +240,14 @@ public class MoleculeViewSkin //extends SkinBase<MoleculeView,MoleculeViewBehavi
         if (mol != null) {
             AbstractDepictor depictor = getSkinnable().createDepictor(mol);
             if (overruleForeground != null) {
-                java.awt.Color fg = new java.awt.Color((float)overruleForeground.getRed(), (float)overruleForeground.getGreen(), (float)overruleForeground.getBlue());
-                java.awt.Color bg = (overruleBackground == null) ? null :
-                        new java.awt.Color((float)overruleBackground.getRed(), (float)overruleBackground.getGreen(), (float)overruleBackground.getBlue());
+                org.cheminfo.awt.Color fg = new org.cheminfo.awt.Color((float)overruleForeground.getRed(), (float)overruleForeground.getGreen(), (float)overruleForeground.getBlue());
+                org.cheminfo.awt.Color bg = (overruleBackground == null) ? null :
+                        new org.cheminfo.awt.Color((float)overruleBackground.getRed(), (float)overruleBackground.getGreen(), (float)overruleBackground.getBlue());
                 depictor.setOverruleColor(fg.getRGB(), bg == null ? 0 : bg.getRGB());
             }
             else {
-                java.awt.Color bg = new java.awt.Color((float)backgroundColor.getRed(), (float)backgroundColor.getGreen(), (float)backgroundColor.getBlue());
-                java.awt.Color fg = (ColorHelper.perceivedBrightness(bg)>0.5) ? java.awt.Color.BLACK : java.awt.Color.WHITE;
+                org.cheminfo.awt.Color bg = new org.cheminfo.awt.Color((float)backgroundColor.getRed(), (float)backgroundColor.getGreen(), (float)backgroundColor.getBlue());
+                org.cheminfo.awt.Color fg = (ColorHelper.perceivedBrightness(bg)>0.5) ? org.cheminfo.awt.Color.BLACK : org.cheminfo.awt.Color.WHITE;
                 depictor.setOverruleColor(fg.getRGB(), bg.getRGB());
             }
             GenericDrawContext context = new FXDrawContext(ctx);

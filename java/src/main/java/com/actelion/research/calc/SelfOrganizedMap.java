@@ -34,8 +34,8 @@
 
 package com.actelion.research.calc;
 
-import java.awt.Point;
-import java.awt.Rectangle;
+import org.cheminfo.awt.Point;
+import org.cheminfo.awt.Rectangle;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;

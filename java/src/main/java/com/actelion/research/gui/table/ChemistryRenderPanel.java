@@ -15,7 +15,7 @@ import com.actelion.research.util.ColorHelper;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 public class ChemistryRenderPanel extends JPanel {
     static final long serialVersionUID = 0x20070312;
@@ -85,7 +85,7 @@ public class ChemistryRenderPanel extends JPanel {
         ((Graphics2D)g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         ((Graphics2D)g).setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 
-        Rectangle r = new Rectangle(new java.awt.Point(0,0), getSize());
+        Rectangle r = new Rectangle(new org.cheminfo.awt.Point(0,0), getSize());
 
         // Substance Graphite LaF does not consider the defined background
         if (LookAndFeelHelper.isNewSubstance() || LookAndFeelHelper.isRadiance()) {

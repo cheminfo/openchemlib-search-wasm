@@ -3,7 +3,7 @@ package com.actelion.research.chem.descriptor.flexophore;
 import com.actelion.research.chem.descriptor.DescriptorHandlerFlexophore;
 import com.actelion.research.chem.descriptor.flexophore.completegraphmatcher.ObjectiveBlurFlexophoreHardMatchUncovered;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 public class FlexophoreAtomContributionColors {
 	private static final int[] cDiverseColor = {

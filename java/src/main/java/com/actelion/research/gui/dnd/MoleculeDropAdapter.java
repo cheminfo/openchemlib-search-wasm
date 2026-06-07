@@ -37,10 +37,10 @@ import com.actelion.research.chem.*;
 import com.actelion.research.chem.dnd.ChemistryFlavors;
 import com.actelion.research.chem.name.StructureNameResolver;
 
-import java.awt.*;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
-import java.awt.dnd.*;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.datatransfer.DataFlavor;
+import org.cheminfo.awt.datatransfer.Transferable;
+import org.cheminfo.awt.dnd.*;
 
 public class MoleculeDropAdapter implements DropTargetListener
 {

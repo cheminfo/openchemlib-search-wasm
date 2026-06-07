@@ -4,9 +4,9 @@ import com.actelion.research.gui.generic.GenericEventHandler;
 import com.actelion.research.gui.generic.GenericKeyEvent;
 import javafx.scene.input.KeyCode;
 
-import java.awt.*;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.event.KeyEvent;
+import org.cheminfo.awt.event.KeyListener;
 
 public class SwingKeyHandler extends GenericEventHandler<GenericKeyEvent> implements KeyListener {
 

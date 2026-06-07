@@ -35,7 +35,7 @@
 package com.actelion.research.gui;
 
 import javax.swing.*;
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 public class JComboBoxWithColor extends JComboBox {
     static final long serialVersionUID = 0x20070316;

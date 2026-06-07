@@ -33,11 +33,11 @@
 
 package com.actelion.research.gui.clipboard;
 
-import java.awt.*;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
-import java.awt.datatransfer.UnsupportedFlavorException;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.datatransfer.Clipboard;
+import org.cheminfo.awt.datatransfer.DataFlavor;
+import org.cheminfo.awt.datatransfer.Transferable;
+import org.cheminfo.awt.datatransfer.UnsupportedFlavorException;
 import java.io.IOException;
 
 /**

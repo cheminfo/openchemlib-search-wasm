@@ -46,6 +46,6 @@ public interface IClipboardHandler {
 	public boolean copyMolecule(StereoMolecule mol);
 	public boolean copyReaction(Reaction r);
 	public boolean copyReaction(String ctab);
-	public boolean copyImage(java.awt.Image img);
-	public java.awt.Image pasteImage();
+	public boolean copyImage(org.cheminfo.awt.Image img);
+	public org.cheminfo.awt.Image pasteImage();
 	}

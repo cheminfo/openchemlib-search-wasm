@@ -33,7 +33,7 @@
 
 package com.actelion.research.util.datamodel;
 
-import java.awt.Point;
+import org.cheminfo.awt.Point;
 
 public class PointDouble {
 	

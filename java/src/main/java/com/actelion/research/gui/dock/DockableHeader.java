@@ -7,10 +7,10 @@ import com.actelion.research.gui.swing.SwingCursorHelper;
 import info.clearthought.layout.TableLayout;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.dnd.DnDConstants;
-import java.awt.dnd.DragSource;
-import java.awt.event.ActionEvent;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.dnd.DnDConstants;
+import org.cheminfo.awt.dnd.DragSource;
+import org.cheminfo.awt.event.ActionEvent;
 import java.util.ArrayList;
 
 public class DockableHeader extends JPanel {

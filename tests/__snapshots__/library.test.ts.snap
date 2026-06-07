@@ -62,6 +62,7 @@ exports[`class prototypes > prototype properties of ForceFieldMMFF94 1`] = `
 
 exports[`class prototypes > prototype properties of Molecule 1`] = `
 [
+  "_toSVG",
   "addImplicitHydrogens",
   "addMissingChirality",
   "changeCustomLabelPosition",
@@ -109,6 +110,7 @@ exports[`class prototypes > prototype properties of Molecule 1`] = `
   "toIsomericSmiles",
   "toMolfile",
   "toMolfileV3",
+  "toSVG",
   "toSmarts",
   "toSmiles",
 ]

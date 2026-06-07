@@ -6,8 +6,8 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
 
@@ -65,7 +65,7 @@ public class FXImage implements GenericImage {
 
 	@Override
 	public void scale(int width, int height) {
-		java.awt.Image scaledImage = mAWTImage.getScaledInstance(width, height, java.awt.Image.SCALE_SMOOTH);
+		org.cheminfo.awt.Image scaledImage = mAWTImage.getScaledInstance(width, height, org.cheminfo.awt.Image.SCALE_SMOOTH);
 		mAWTImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 		Graphics g = mAWTImage.createGraphics();
 		g.drawImage(scaledImage, 0, 0, null);

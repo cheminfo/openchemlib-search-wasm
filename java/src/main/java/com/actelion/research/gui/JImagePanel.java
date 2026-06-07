@@ -38,9 +38,9 @@ import com.actelion.research.gui.clipboard.ImageClipboardHandler;
 import com.actelion.research.gui.swing.SwingCursorHelper;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.image.ImageObserver;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.event.*;
+import org.cheminfo.awt.image.ImageObserver;
 
 public class JImagePanel extends JPanel implements ActionListener,ImageObserver,KeyListener,MouseListener,MouseMotionListener,MouseWheelListener {
 	private static final long serialVersionUID = 0x20120502;

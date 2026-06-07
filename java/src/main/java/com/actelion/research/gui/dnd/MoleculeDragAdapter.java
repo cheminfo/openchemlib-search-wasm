@@ -39,11 +39,11 @@ import com.actelion.research.chem.StereoMolecule;
 import com.actelion.research.chem.dnd.ChemistryFlavors;
 import com.actelion.research.gui.generic.GenericRectangle;
 
-import java.awt.*;
-import java.awt.datatransfer.Transferable;
-import java.awt.datatransfer.UnsupportedFlavorException;
-import java.awt.dnd.*;
-import java.awt.image.BufferedImage;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.datatransfer.Transferable;
+import org.cheminfo.awt.datatransfer.UnsupportedFlavorException;
+import org.cheminfo.awt.dnd.*;
+import org.cheminfo.awt.image.BufferedImage;
 import java.io.IOException;
 
 

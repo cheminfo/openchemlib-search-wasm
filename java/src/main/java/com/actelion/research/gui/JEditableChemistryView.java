@@ -7,9 +7,9 @@ import com.actelion.research.chem.reaction.Reaction;
 import com.actelion.research.gui.editor.SwingEditorDialog;
 import com.actelion.research.gui.hidpi.HiDPIHelper;
 
-import java.awt.*;
-import java.awt.event.MouseEvent;
-import java.awt.geom.Rectangle2D;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.event.MouseEvent;
+import org.cheminfo.awt.geom.Rectangle2D;
 
 public class JEditableChemistryView extends JChemistryView {
 	private static final String EDIT_MESSAGE = "<double click or drag & drop>";

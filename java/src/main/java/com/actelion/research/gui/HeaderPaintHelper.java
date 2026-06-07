@@ -35,9 +35,9 @@
 package com.actelion.research.gui;
 
 import javax.swing.*;
-import java.awt.Color;
-import java.awt.GradientPaint;
-import java.awt.Paint;
+import org.cheminfo.awt.Color;
+import org.cheminfo.awt.GradientPaint;
+import org.cheminfo.awt.Paint;
 
 public class HeaderPaintHelper {
 	private static int[] sRGB = null;

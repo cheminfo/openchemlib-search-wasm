@@ -34,7 +34,7 @@ package com.actelion.research.gui.hidpi;
 */
 
 		import java.io.*;
-		import java.awt.*;
+		import org.cheminfo.awt.*;
 		import java.net.URL;
 
 		import javax.swing.*;

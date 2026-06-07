@@ -36,8 +36,8 @@ package com.actelion.research.chem;
 import com.actelion.research.gui.generic.GenericPolygon;
 import com.actelion.research.gui.generic.GenericRectangle;
 
-import java.awt.*;
-import java.awt.image.BufferedImage;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.image.BufferedImage;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;

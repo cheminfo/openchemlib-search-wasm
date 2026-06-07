@@ -8,7 +8,7 @@ import com.actelion.research.gui.LookAndFeelHelper;
 
 import javax.swing.*;
 import javax.swing.table.TableCellRenderer;
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 public class ChemistryCellRenderer implements ListCellRenderer,TableCellRenderer {
     private ChemistryRenderPanel    mRenderPanel;

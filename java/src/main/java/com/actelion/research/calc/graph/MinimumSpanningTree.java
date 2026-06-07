@@ -34,7 +34,7 @@ package com.actelion.research.calc.graph;
 
 import com.actelion.research.calc.Matrix;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 

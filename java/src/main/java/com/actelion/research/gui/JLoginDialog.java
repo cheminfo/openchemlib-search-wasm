@@ -37,10 +37,10 @@ package com.actelion.research.gui;
 import com.actelion.research.util.Prefs;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionListener;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.event.ActionListener;
+import org.cheminfo.awt.event.WindowEvent;
+import org.cheminfo.awt.event.WindowListener;
 
 public class JLoginDialog extends JDialog implements WindowListener {
     private static final long serialVersionUID = 0x20100518;

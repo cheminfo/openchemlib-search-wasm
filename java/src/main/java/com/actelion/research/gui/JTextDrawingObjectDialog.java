@@ -37,9 +37,9 @@ import com.actelion.research.chem.TextDrawingObject;
 import info.clearthought.layout.TableLayout;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.event.ActionEvent;
+import org.cheminfo.awt.event.ActionListener;
 
 @Deprecated
 public class JTextDrawingObjectDialog extends JDialog implements ActionListener {

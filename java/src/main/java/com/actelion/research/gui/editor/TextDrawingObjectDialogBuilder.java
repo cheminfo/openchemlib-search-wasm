@@ -36,7 +36,7 @@ package com.actelion.research.gui.editor;
 import com.actelion.research.chem.TextDrawingObject;
 import com.actelion.research.gui.generic.*;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 public class TextDrawingObjectDialogBuilder implements GenericEventListener<GenericActionEvent> {
     static final long serialVersionUID = 0x20110325;

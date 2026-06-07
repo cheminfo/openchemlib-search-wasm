@@ -40,7 +40,7 @@ import com.actelion.research.chem.properties.complexity.ModelExhaustiveStatistic
 import com.actelion.research.chem.properties.complexity.ResultFragmentsStatistic;
 import com.actelion.research.util.PointUtils;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

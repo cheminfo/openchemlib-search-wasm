@@ -8,7 +8,7 @@ import com.actelion.research.gui.hidpi.ScaledEditorKit;
 
 import javax.swing.*;
 import javax.swing.text.html.HTMLEditorKit;
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.io.File;
 
 public class SwingUIHelper implements GenericUIHelper {

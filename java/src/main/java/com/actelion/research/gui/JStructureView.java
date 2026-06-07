@@ -51,12 +51,12 @@ import com.actelion.research.gui.swing.SwingDrawContext;
 import com.actelion.research.util.ColorHelper;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.datatransfer.StringSelection;
-import java.awt.datatransfer.Transferable;
-import java.awt.dnd.*;
-import java.awt.event.*;
-import java.awt.geom.Rectangle2D;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.datatransfer.StringSelection;
+import org.cheminfo.awt.datatransfer.Transferable;
+import org.cheminfo.awt.dnd.*;
+import org.cheminfo.awt.event.*;
+import org.cheminfo.awt.geom.Rectangle2D;
 import java.io.*;
 import java.util.ArrayList;
 
@@ -349,7 +349,7 @@ public class JStructureView extends JComponent implements ActionListener,MouseLi
 		if (mIsSelecting) {
 			if (mIsLassoSelect) {
 				g.setColor(lassoColor());
-				java.awt.Polygon p = new java.awt.Polygon();
+				org.cheminfo.awt.Polygon p = new org.cheminfo.awt.Polygon();
 				for (int i = 0; i<mLassoRegion.getSize(); i++)
 					p.addPoint(Math.round((float)mLassoRegion.getX(i)), Math.round((float)mLassoRegion.getY(i)));
 				g.drawPolygon(p);
@@ -802,7 +802,7 @@ public class JStructureView extends JComponent implements ActionListener,MouseLi
 			}
 		}
 
-/*	public java.awt.datatransfer.FlavorMap getSystemFlavorMap() {
+/*	public org.cheminfo.awt.datatransfer.FlavorMap getSystemFlavorMap() {
 	    return new OurFlavorMap();
 	    }
 

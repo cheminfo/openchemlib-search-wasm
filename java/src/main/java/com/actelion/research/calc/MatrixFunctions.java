@@ -38,7 +38,7 @@ import com.actelion.research.util.DoubleVec;
 import com.actelion.research.util.Formatter;
 import com.actelion.research.util.datamodel.*;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.io.*;
 import java.util.*;
 import java.util.Base64.Decoder;

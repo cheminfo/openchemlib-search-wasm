@@ -34,7 +34,7 @@
 
 package com.actelion.research.gui;
 
-import java.awt.Color;
+import org.cheminfo.awt.Color;
 
 public class ComboBoxColorItem {
     Color mColor;

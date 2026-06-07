@@ -1,7 +1,7 @@
 package com.actelion.research.gui.hidpi;
 
 import javax.swing.*;
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 /**
  * Created by thomas on 07/12/15.

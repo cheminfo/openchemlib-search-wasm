@@ -37,10 +37,10 @@ package com.actelion.research.gui;
 import com.actelion.research.gui.hidpi.HiDPIHelper;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.event.MouseEvent;
+import org.cheminfo.awt.event.MouseListener;
+import org.cheminfo.awt.event.MouseMotionListener;
 
 public class JMultiPanelTitle extends JComponent implements MouseListener,MouseMotionListener {
     private static final long serialVersionUID = 0x20100813;

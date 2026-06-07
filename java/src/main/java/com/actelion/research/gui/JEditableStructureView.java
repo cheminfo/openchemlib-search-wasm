@@ -39,9 +39,9 @@ import com.actelion.research.gui.editor.GenericEditorArea;
 import com.actelion.research.gui.editor.SwingEditorDialog;
 import com.actelion.research.gui.hidpi.HiDPIHelper;
 
-import java.awt.*;
-import java.awt.event.MouseEvent;
-import java.awt.geom.Rectangle2D;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.event.MouseEvent;
+import org.cheminfo.awt.geom.Rectangle2D;
 
 public class JEditableStructureView extends JStructureView {
     static final long serialVersionUID = 0x20090727;

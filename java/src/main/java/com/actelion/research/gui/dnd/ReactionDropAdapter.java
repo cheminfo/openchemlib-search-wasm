@@ -39,10 +39,10 @@ import com.actelion.research.chem.dnd.ChemistryFlavors;
 import com.actelion.research.chem.reaction.Reaction;
 import com.actelion.research.chem.reaction.ReactionEncoder;
 
-import java.awt.*;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
-import java.awt.dnd.*;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.datatransfer.DataFlavor;
+import org.cheminfo.awt.datatransfer.Transferable;
+import org.cheminfo.awt.dnd.*;
 public class ReactionDropAdapter implements DropTargetListener
 {
 	public static final boolean debug = false;

@@ -1,6 +1,6 @@
 package com.actelion.research.gui.dock;
 
-import java.awt.Component;
+import org.cheminfo.awt.Component;
 
 public abstract class TreeContainer extends TreeElement {
     public abstract void removeWithLeaf(TreeLeaf leaf);

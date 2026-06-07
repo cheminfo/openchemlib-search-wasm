@@ -34,8 +34,8 @@ package com.actelion.research.gui.hidpi;
 */
 
 
-		import java.awt.Color;
-		import java.awt.Font;
+		import org.cheminfo.awt.Color;
+		import org.cheminfo.awt.Font;
 		import java.io.StringReader;
 
 		import javax.swing.text.Document;

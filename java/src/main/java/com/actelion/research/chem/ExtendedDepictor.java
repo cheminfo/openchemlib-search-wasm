@@ -40,7 +40,7 @@ import com.actelion.research.gui.generic.GenericDepictor;
 import com.actelion.research.gui.generic.GenericDrawContext;
 import com.actelion.research.gui.generic.GenericRectangle;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.util.PriorityQueue;
 
 

@@ -38,7 +38,7 @@ import com.actelion.research.util.convert.String2DoubleArray;
 import com.actelion.research.util.datamodel.IntegerDouble;
 import com.actelion.research.util.datamodel.ScorePoint;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.io.*;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;

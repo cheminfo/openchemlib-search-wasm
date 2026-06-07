@@ -32,7 +32,7 @@
 */
 package com.actelion.research.gui.wmf;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.io.*;
 import java.util.Locale;
 import java.util.Properties;

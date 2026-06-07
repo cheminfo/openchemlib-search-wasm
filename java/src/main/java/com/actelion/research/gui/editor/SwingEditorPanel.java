@@ -4,7 +4,7 @@ import com.actelion.research.chem.StereoMolecule;
 import com.actelion.research.chem.reaction.Reaction;
 
 import javax.swing.*;
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 public class SwingEditorPanel extends JPanel {
 	static final long serialVersionUID = 0x20211103;

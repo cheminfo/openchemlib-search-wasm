@@ -3,9 +3,9 @@ package com.actelion.research.gui.dock;
 import javax.swing.*;
 import javax.swing.plaf.SplitPaneUI;
 import javax.swing.plaf.basic.BasicSplitPaneUI;
-import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.event.MouseAdapter;
+import org.cheminfo.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Vector;
 

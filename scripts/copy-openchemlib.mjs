@@ -90,6 +90,15 @@ for (const sub of readdirSync(join(upstreamJava, 'org'))) {
   });
 }
 
+// 1b. Overlay cheminfo-modified OCL sources over the freshly-vendored ones. These
+//     are the GWT/headless replacements for Swing/AWT-heavy upstream classes
+//     (currently the depiction HiDPIHelper + HiDPIIcon).
+const modifiedDir = join(root, 'scripts', 'modified');
+for (const file of walk(modifiedDir)) {
+  if (!file.endsWith('.java')) continue;
+  cpSync(file, join(javaDir, file.slice(modifiedDir.length + 1)));
+}
+
 // 2. Copy resources onto the classpath and generate the ResourceSupplier that
 //    tells TeaVM which ones to bundle into the wasm.
 rmSync(resourcesDir, { recursive: true, force: true });
@@ -137,6 +146,13 @@ for (const file of walk(javaDir)) {
       'if (molecule.getConnAtom(iAtom, 0)>0) {',
       'if (molecule.getConnAtoms(iAtom) > 0 && molecule.getConnAtom(iAtom, 0)>0) {',
     );
+  }
+  // TeaVM resolves java.* only from its own classlib, which lacks java.awt.Font,
+  // Graphics2D, BufferedImage, geom, etc. (and has an incomplete Color). The SVG
+  // depiction closure's AWT references are therefore repackaged onto our pure-Java
+  // shims in org.cheminfo.awt.
+  if (code.includes('java.awt')) {
+    code = code.replaceAll(/\bjava\.awt\b/g, 'org.cheminfo.awt');
   }
   if (code !== original) {
     writeFileSync(file, code);

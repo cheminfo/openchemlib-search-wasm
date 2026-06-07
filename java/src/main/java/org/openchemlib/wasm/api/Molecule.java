@@ -165,6 +165,138 @@ public class Molecule {
   }
 
   /**
+   * Renders the molecule as an SVG string (primitive used by the {@code toSVG}
+   * wrapper, which adds option handling and SVG sanitisation in JS). Atom and
+   * bond elements are tagged with the given id (e.g. {@code id:Atom:0}).
+   *
+   * @param width the SVG width in pixels
+   * @param height the SVG height in pixels
+   * @param factorTextSize text-size scale factor
+   * @param autoCrop whether to crop the viewport to the molecule's bounding box
+   * @param autoCropMargin margin in pixels when auto-cropping
+   * @param id the id prefix for atom/bond elements
+   * @return the SVG markup
+   */
+  @JSExport
+  public String _toSVG(
+      int width,
+      int height,
+      float factorTextSize,
+      boolean autoCrop,
+      int autoCropMargin,
+      String id,
+      Options.ToSVG options) {
+    StereoMolecule target = molecule;
+    boolean degenerated = true;
+    for (int i = 0; i < molecule.getAllAtoms() - 1; i++) {
+      if (molecule.getAtomX(i) != molecule.getAtomX(i + 1)
+          || molecule.getAtomY(i) != molecule.getAtomY(i + 1)) {
+        degenerated = false;
+        break;
+      }
+    }
+    if (degenerated) {
+      target = molecule.getCompactCopy();
+      new com.actelion.research.chem.coords.CoordinateInventor(0).invent(target);
+    }
+    target.ensureHelperArrays(
+        com.actelion.research.chem.Molecule.cHelperSymmetryStereoHeterotopicity);
+    int viewMode =
+        com.actelion.research.chem.AbstractDepictor.cModeInflateToMaxAVBL
+            | com.actelion.research.chem.AbstractDepictor.cModeChiralTextBelowMolecule;
+    int displayMode = displayModeFromOptions(options);
+    com.actelion.research.chem.SVGDepictor depictor =
+        new com.actelion.research.chem.SVGDepictor(target, displayMode, id);
+    depictor.setFactorTextSize(factorTextSize);
+    depictor.validateView(
+        null, new com.actelion.research.gui.generic.GenericRectangle(0, 0, width, height), viewMode);
+    com.actelion.research.gui.generic.GenericRectangle bounds = depictor.getBoundingRect();
+    depictor.paint(null);
+    String result = depictor.toString();
+    if (!autoCrop) {
+      return result;
+    }
+    int newWidth = (int) Math.round(bounds.width + autoCropMargin * 2);
+    int newHeight = (int) Math.round(bounds.height + autoCropMargin * 2);
+    int newX = (int) Math.round(bounds.x - autoCropMargin);
+    int newY = (int) Math.round(bounds.y - autoCropMargin);
+    return result.replaceAll(
+        "width=\"\\d+px\" height=\"\\d+px\" viewBox=\"0 0 \\d+ \\d+\"",
+        "width=\""
+            + newWidth
+            + "px\" height=\""
+            + newHeight
+            + "px\" viewBox=\""
+            + newX
+            + " "
+            + newY
+            + " "
+            + newWidth
+            + " "
+            + newHeight
+            + "\"");
+  }
+
+  private static int displayModeFromOptions(Options.ToSVG options) {
+    if (options == null || org.teavm.jso.core.JSObjects.isUndefined(options)) {
+      return 0;
+    }
+    int mode = 0;
+    if (options.isNoTabus()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeNoTabus;
+    }
+    if (options.isShowAtomNumber()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeAtomNo;
+    }
+    if (options.isShowBondNumber()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeBondNo;
+    }
+    if (options.isHighlightQueryFeatures()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeHiliteAllQueryFeatures;
+    }
+    if (options.isShowMapping()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeShowMapping;
+    }
+    if (options.isSuppressChiralText()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeSuppressChiralText;
+    }
+    if (options.isSuppressCIPParity()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeSuppressCIPParity;
+    }
+    if (options.isSuppressESR()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeSuppressESR;
+    }
+    if (options.isNoCarbonLabelWithCustomLabel()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeNoCarbonLabelWithCustomLabel;
+    }
+    if (options.isNoAtomCustomLabels()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeNoAtomCustomLabels;
+    }
+    if (options.isShowSymmetrySimple()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeShowSymmetrySimple;
+    }
+    if (options.isShowSymmetryStereoHeterotopicity()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeShowSymmetryStereoHeterotopicity;
+    }
+    if (options.isNoImplicitAtomLabelColors()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeNoImplicitAtomLabelColors;
+    }
+    if (options.isNoStereoProblem()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeNoStereoProblem;
+    }
+    if (options.isNoColorOnESRAndCIP()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeNoColorOnESRAndCIP;
+    }
+    if (options.isNoImplicitHydrogen()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeNoImplicitHydrogen;
+    }
+    if (options.isDrawBondsInGray()) {
+      mode |= com.actelion.research.chem.AbstractDepictor.cDModeDrawBondsInGray;
+    }
+    return mode;
+  }
+
+  /**
    * Whether this molecule is a query fragment.
    *
    * @return true if a fragment

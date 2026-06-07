@@ -1,11 +1,11 @@
 package com.actelion.research.gui.dock;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.datatransfer.Transferable;
-import java.awt.dnd.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.datatransfer.Transferable;
+import org.cheminfo.awt.dnd.*;
+import org.cheminfo.awt.event.ActionEvent;
+import org.cheminfo.awt.event.ActionListener;
 import java.util.List;
 import java.util.*;
 

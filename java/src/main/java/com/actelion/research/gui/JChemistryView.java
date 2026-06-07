@@ -53,11 +53,11 @@ import com.actelion.research.gui.swing.SwingDrawContext;
 import com.actelion.research.util.ColorHelper;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.datatransfer.Transferable;
-import java.awt.dnd.*;
-import java.awt.event.*;
-import java.awt.geom.Rectangle2D;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.datatransfer.Transferable;
+import org.cheminfo.awt.dnd.*;
+import org.cheminfo.awt.event.*;
+import org.cheminfo.awt.geom.Rectangle2D;
 import java.io.File;
 import java.util.ArrayList;
 

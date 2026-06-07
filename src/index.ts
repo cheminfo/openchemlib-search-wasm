@@ -676,6 +676,59 @@ MoleculeClass.fromText = function fromText(text: string) {
   return null;
 };
 
+// toSVG: the Java _toSVG primitive renders + auto-crops; the JS wrapper adds
+// option handling and SVG sanitisation (mirrors openchemlib-js extend_to_svg.js).
+const _toSVG = MoleculeClass.prototype._toSVG;
+MoleculeClass.prototype.toSVG = function toSVG(
+  width: number,
+  height: number,
+  id: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  options: any = {},
+) {
+  if (typeof width !== 'number' || typeof height !== 'number') {
+    throw new Error('Molecule#toSVG requires width and height to be specified');
+  }
+  const factorTextSize = options.factorTextSize || 1;
+  const autoCrop = options.autoCrop === true;
+  const autoCropMargin =
+    options.autoCropMargin === undefined ? 5 : options.autoCropMargin;
+
+  let svg: string = _toSVG.call(
+    this,
+    width,
+    height,
+    factorTextSize,
+    autoCrop,
+    autoCropMargin,
+    id,
+    options,
+  );
+
+  const finalId = /svg id="(.*)" xmlns/.exec(svg)?.[1] ?? id;
+  // Scope the style selectors with the id so styles do not leak across SVGs.
+  svg = svg.replace(
+    '<style>',
+    `<style> #${finalId} text {font-family: sans-serif;}`,
+  );
+  svg = svg.replace('line {', `#${finalId} line {`);
+  svg = svg.replace('polygon {', `#${finalId} polygon {`);
+
+  if (options.fontWeight) {
+    svg = svg.replaceAll(
+      'font-size=',
+      `font-weight="${options.fontWeight}" font-size=`,
+    );
+  }
+  if (options.strokeWidth) {
+    svg = svg.replaceAll(
+      /stroke-width="[^"]+"/g,
+      `stroke-width="${options.strokeWidth}"`,
+    );
+  }
+  return svg;
+};
+
 MoleculeClass.prototype.getOCL = function getOCL() {
   return OCL;
 };

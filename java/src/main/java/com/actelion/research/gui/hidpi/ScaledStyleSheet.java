@@ -35,7 +35,7 @@ package com.actelion.research.gui.hidpi;
 		import javax.swing.text.AttributeSet;
 import javax.swing.text.html.CSS;
 import javax.swing.text.html.StyleSheet;
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 
 public class ScaledStyleSheet extends StyleSheet{

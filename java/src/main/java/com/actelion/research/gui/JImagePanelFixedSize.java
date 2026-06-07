@@ -40,10 +40,10 @@ import com.actelion.research.gui.hidpi.HiDPIHelper;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
-import java.awt.*;
-import java.awt.geom.AffineTransform;
-import java.awt.image.AffineTransformOp;
-import java.awt.image.BufferedImage;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.geom.AffineTransform;
+import org.cheminfo.awt.image.AffineTransformOp;
+import org.cheminfo.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
 
 public class JImagePanelFixedSize extends JPanel {

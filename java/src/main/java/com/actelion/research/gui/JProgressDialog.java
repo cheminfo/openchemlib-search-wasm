@@ -39,9 +39,9 @@ import com.actelion.research.gui.hidpi.HiDPIHelper;
 import info.clearthought.layout.TableLayout;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.event.ActionEvent;
+import org.cheminfo.awt.event.ActionListener;
 
 public class JProgressDialog extends JDialog implements ActionListener,ProgressController,Runnable {
 	private static final long serialVersionUID = 0x20070301;

@@ -4,9 +4,7 @@ import { expect, test } from 'vitest';
 
 import { Molecule } from '#lib';
 
-// TODO(wasm): this case asserts on toSVG() output, which needs java.awt and is
-// not available in the WasmGC build. Skipped until an SVG path exists.
-test.skip('molfile with atomMapNo', () => {
+test('molfile with atomMapNo', () => {
   const molfile = readFileSync(
     `${import.meta.dirname}/data/atom_map_no.mol`,
     'utf8',

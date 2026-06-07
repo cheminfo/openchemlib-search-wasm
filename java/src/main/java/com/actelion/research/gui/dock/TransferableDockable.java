@@ -1,8 +1,8 @@
 package com.actelion.research.gui.dock;
 
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
-import java.awt.datatransfer.UnsupportedFlavorException;
+import org.cheminfo.awt.datatransfer.DataFlavor;
+import org.cheminfo.awt.datatransfer.Transferable;
+import org.cheminfo.awt.datatransfer.UnsupportedFlavorException;
 
 public class TransferableDockable implements Transferable {
 	public static final DataFlavor DF_DOCKABLE_DEF = new DataFlavor("application/x-openmolecules-dockable;class=java.lang.String", "Dockable view setting");

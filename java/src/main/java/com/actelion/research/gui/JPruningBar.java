@@ -38,12 +38,12 @@ import com.actelion.research.gui.hidpi.HiDPIHelper;
 import com.actelion.research.util.ColorHelper;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Rectangle2D;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.event.MouseEvent;
+import org.cheminfo.awt.event.MouseListener;
+import org.cheminfo.awt.event.MouseMotionListener;
+import org.cheminfo.awt.geom.Ellipse2D;
+import org.cheminfo.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 
 /**

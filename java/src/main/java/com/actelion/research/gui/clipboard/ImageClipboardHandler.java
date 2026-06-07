@@ -35,8 +35,8 @@ package com.actelion.research.gui.clipboard;
 
 
 
-import java.awt.*;
-import java.awt.datatransfer.*;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.datatransfer.*;
 import java.io.IOException;
 
 

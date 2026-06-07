@@ -3,10 +3,10 @@ package com.actelion.research.gui.swing;
 import com.actelion.research.gui.generic.GenericEventHandler;
 import com.actelion.research.gui.generic.GenericMouseEvent;
 
-import java.awt.event.InputEvent;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
+import org.cheminfo.awt.event.InputEvent;
+import org.cheminfo.awt.event.MouseEvent;
+import org.cheminfo.awt.event.MouseListener;
+import org.cheminfo.awt.event.MouseMotionListener;
 
 public class SwingMouseHandler extends GenericEventHandler<GenericMouseEvent> implements MouseListener,MouseMotionListener {
 

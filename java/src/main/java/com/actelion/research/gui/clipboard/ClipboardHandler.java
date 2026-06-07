@@ -49,10 +49,10 @@ import com.actelion.research.gui.wmf.WMFGraphics2D;
 import com.actelion.research.util.Platform;
 import com.actelion.research.util.Sketch;
 
-import java.awt.*;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
-import java.awt.datatransfer.UnsupportedFlavorException;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.datatransfer.DataFlavor;
+import org.cheminfo.awt.datatransfer.Transferable;
+import org.cheminfo.awt.datatransfer.UnsupportedFlavorException;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -913,11 +913,11 @@ public class ClipboardHandler implements IClipboardHandler {
      * @param img Image to be copied
      * @return true on success
      */
-    public boolean copyImage(java.awt.Image img) {
+    public boolean copyImage(org.cheminfo.awt.Image img) {
         return ImageClipboardHandler.copyImage(img);
     }
 
-    public java.awt.Image pasteImage() {
+    public org.cheminfo.awt.Image pasteImage() {
         return ImageClipboardHandler.pasteImage();
     }
 

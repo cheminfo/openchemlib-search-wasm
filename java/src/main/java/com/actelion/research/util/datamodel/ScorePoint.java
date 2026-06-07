@@ -35,7 +35,7 @@
 
 package com.actelion.research.util.datamodel;
 
-import java.awt.Point;
+import org.cheminfo.awt.Point;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Comparator;

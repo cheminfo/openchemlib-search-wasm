@@ -35,7 +35,7 @@ package com.actelion.research.util;
 
 import com.actelion.research.util.datamodel.DoubleArray;
 
-import java.awt.Point;
+import org.cheminfo.awt.Point;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;

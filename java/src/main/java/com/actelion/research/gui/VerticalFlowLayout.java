@@ -1,6 +1,6 @@
 package com.actelion.research.gui;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 /**
  *  A vertical flow layout is similar to a flow layuot but it layouts the

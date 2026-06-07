@@ -35,7 +35,7 @@ package com.actelion.research.chem;
 
 import com.actelion.research.gui.generic.GenericPolygon;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.util.ArrayList;
 
 @Deprecated

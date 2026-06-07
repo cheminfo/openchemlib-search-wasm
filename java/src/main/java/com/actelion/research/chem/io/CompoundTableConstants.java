@@ -33,7 +33,7 @@
 
 package com.actelion.research.chem.io;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 public interface CompoundTableConstants {
     String cColumnUnassignedItemText = "<Unassigned>";

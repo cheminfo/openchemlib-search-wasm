@@ -6,7 +6,7 @@ import com.actelion.research.gui.swing.SwingDrawContext;
 import com.actelion.research.gui.swing.SwingMouseHandler;
 
 import javax.swing.*;
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 public class SwingEditorToolbar extends JPanel implements GenericCanvas {
 	private GenericEditorToolbar mGenericToolbar;

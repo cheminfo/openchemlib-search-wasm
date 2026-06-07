@@ -6,7 +6,7 @@ import com.actelion.research.util.datamodel.IIdentifiedObject;
 import com.actelion.research.util.datamodel.IdentifiedObject;
 import com.actelion.research.util.datamodel.ScorePoint;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;

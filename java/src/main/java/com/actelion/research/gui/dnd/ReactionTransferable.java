@@ -39,7 +39,7 @@ import com.actelion.research.chem.dnd.ChemistryFlavors;
 import com.actelion.research.chem.reaction.Reaction;
 import com.actelion.research.chem.reaction.ReactionEncoder;
 
-import java.awt.datatransfer.*;
+import org.cheminfo.awt.datatransfer.*;
 import java.io.IOException;
 
 public class ReactionTransferable implements Transferable,ClipboardOwner {

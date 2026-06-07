@@ -46,15 +46,15 @@ import com.actelion.research.util.ColorHelper;
 import com.actelion.research.gui.swing.SwingCursorHelper;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
-import java.awt.dnd.DnDConstants;
-import java.awt.dnd.DropTarget;
-import java.awt.dnd.DropTargetDragEvent;
-import java.awt.dnd.DropTargetEvent;
-import java.awt.event.*;
-import java.awt.geom.Rectangle2D;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.datatransfer.DataFlavor;
+import org.cheminfo.awt.datatransfer.Transferable;
+import org.cheminfo.awt.dnd.DnDConstants;
+import org.cheminfo.awt.dnd.DropTarget;
+import org.cheminfo.awt.dnd.DropTargetDragEvent;
+import org.cheminfo.awt.dnd.DropTargetEvent;
+import org.cheminfo.awt.event.*;
+import org.cheminfo.awt.geom.Rectangle2D;
 import java.io.BufferedWriter;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -814,14 +814,14 @@ public class CompoundCollectionPane<T> extends JScrollPane
 		// the SystemFlavorMap, but as I found it does not hurt, since the context classloader will be installed after
 		// the first call. I know, that this depends heavely on a specific behaviour of the systemflavormap, but for now
 		// there's nothing I can do about it.
-	static class OurFlavorMap implements java.awt.datatransfer.FlavorMap {
+	static class OurFlavorMap implements org.cheminfo.awt.datatransfer.FlavorMap {
 		public java.util.Map<DataFlavor,String> getNativesForFlavors(DataFlavor[] dfs) {
-			java.awt.datatransfer.FlavorMap m = java.awt.datatransfer.SystemFlavorMap.getDefaultFlavorMap();
+			org.cheminfo.awt.datatransfer.FlavorMap m = org.cheminfo.awt.datatransfer.SystemFlavorMap.getDefaultFlavorMap();
 			return m.getNativesForFlavors(dfs);
 			}
 
 		public java.util.Map<String,DataFlavor> getFlavorsForNatives(String[] natives) {
-			java.awt.datatransfer.FlavorMap m = java.awt.datatransfer.SystemFlavorMap.getDefaultFlavorMap();
+			org.cheminfo.awt.datatransfer.FlavorMap m = org.cheminfo.awt.datatransfer.SystemFlavorMap.getDefaultFlavorMap();
 			return m.getFlavorsForNatives(natives);
 			}
 		}

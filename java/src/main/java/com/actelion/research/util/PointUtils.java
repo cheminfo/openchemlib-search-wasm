@@ -33,7 +33,7 @@
 
 package com.actelion.research.util;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.util.*;
 import java.util.List;
 

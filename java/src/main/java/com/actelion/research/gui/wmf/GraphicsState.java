@@ -33,8 +33,8 @@
 
 package com.actelion.research.gui.wmf;
 
-import java.awt.Point;
-import java.awt.Rectangle;
+import org.cheminfo.awt.Point;
+import org.cheminfo.awt.Rectangle;
 
 class GraphicsState
 {

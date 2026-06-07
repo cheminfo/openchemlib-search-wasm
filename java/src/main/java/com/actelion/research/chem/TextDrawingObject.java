@@ -37,7 +37,7 @@ import com.actelion.research.gui.generic.GenericDrawContext;
 import com.actelion.research.gui.generic.GenericPoint;
 import com.actelion.research.gui.generic.GenericRectangle;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.util.ArrayList;
 
 public class TextDrawingObject extends AbstractDrawingObject {

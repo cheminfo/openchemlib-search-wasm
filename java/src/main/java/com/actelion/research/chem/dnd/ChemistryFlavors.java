@@ -33,7 +33,7 @@
 
 package com.actelion.research.chem.dnd;
 
-import java.awt.datatransfer.DataFlavor;
+import org.cheminfo.awt.datatransfer.DataFlavor;
 
 public class ChemistryFlavors {
     static class SerializedClassFlavor extends DataFlavor {

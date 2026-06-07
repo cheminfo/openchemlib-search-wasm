@@ -4,8 +4,8 @@ import com.actelion.research.gui.generic.GenericActionEvent;
 import com.actelion.research.gui.generic.GenericCheckBox;
 
 import javax.swing.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import org.cheminfo.awt.event.ActionEvent;
+import org.cheminfo.awt.event.ActionListener;
 
 public class SwingCheckBox extends SwingComponent implements GenericCheckBox,ActionListener {
 	private JCheckBox mCheckBox;

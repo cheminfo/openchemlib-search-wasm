@@ -5,9 +5,9 @@ import com.actelion.research.gui.hidpi.HiDPIHelper;
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.event.MouseAdapter;
+import org.cheminfo.awt.event.MouseEvent;
 import java.util.ArrayList;
 
 public class TreeLeaf extends TreeElement implements ChangeListener {

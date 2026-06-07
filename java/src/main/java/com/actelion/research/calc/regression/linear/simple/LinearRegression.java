@@ -33,7 +33,7 @@
 
 package com.actelion.research.calc.regression.linear.simple;
 
-import java.awt.Point;
+import org.cheminfo.awt.Point;
 import java.util.List;
 import java.util.Vector;
 

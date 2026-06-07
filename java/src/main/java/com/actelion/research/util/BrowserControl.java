@@ -1,6 +1,6 @@
 package com.actelion.research.util;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;

@@ -32,9 +32,9 @@
 */
 package com.actelion.research.gui.wmf;
 
-import java.awt.*;
-import java.awt.image.ImageObserver;
-import java.awt.image.PixelGrabber;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.image.ImageObserver;
+import org.cheminfo.awt.image.PixelGrabber;
 import java.text.AttributedCharacterIterator;
 
 

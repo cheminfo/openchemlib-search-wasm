@@ -1,7 +1,7 @@
 package com.actelion.research.gui.dock;
 
 import javax.swing.*;
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.util.ArrayList;
 import java.util.Vector;
 

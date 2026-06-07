@@ -34,7 +34,7 @@
 package com.actelion.research.util;
 
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;

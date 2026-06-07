@@ -3,8 +3,8 @@ package com.actelion.research.gui.swing;
 import com.actelion.research.gui.generic.GenericImage;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
 
@@ -57,7 +57,7 @@ public class SwingImage implements GenericImage {
 
 	@Override
 	public void scale(int width, int height) {
-		java.awt.Image scaledImage = mImage.getScaledInstance(width, height, java.awt.Image.SCALE_SMOOTH);
+		org.cheminfo.awt.Image scaledImage = mImage.getScaledInstance(width, height, org.cheminfo.awt.Image.SCALE_SMOOTH);
 		mImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 		Graphics g = mImage.createGraphics();
 		g.drawImage(scaledImage, 0, 0, null);

@@ -4,7 +4,7 @@ import com.actelion.research.gui.swing.SwingCursorHelper;
 
 import javax.swing.*;
 import javax.swing.event.MouseInputAdapter;
-import java.awt.event.MouseEvent;
+import org.cheminfo.awt.event.MouseEvent;
 
 public class HeaderMouseAdapter extends MouseInputAdapter {
     private PopupProvider mPopupProvider = null;

@@ -41,11 +41,11 @@ import com.actelion.research.chem.reaction.Reaction;
 import com.actelion.research.gui.generic.GenericRectangle;
 import com.actelion.research.gui.swing.SwingDrawContext;
 
-import java.awt.*;
-import java.awt.datatransfer.Transferable;
-import java.awt.datatransfer.UnsupportedFlavorException;
-import java.awt.dnd.*;
-import java.awt.image.BufferedImage;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.datatransfer.Transferable;
+import org.cheminfo.awt.datatransfer.UnsupportedFlavorException;
+import org.cheminfo.awt.dnd.*;
+import org.cheminfo.awt.image.BufferedImage;
 import java.io.IOException;
 
 

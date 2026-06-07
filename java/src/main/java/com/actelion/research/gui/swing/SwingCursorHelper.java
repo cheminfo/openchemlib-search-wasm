@@ -37,7 +37,7 @@ import com.actelion.research.gui.LookAndFeelHelper;
 import com.actelion.research.gui.generic.GenericCursorHelper;
 import com.actelion.research.util.Platform;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 public class SwingCursorHelper extends GenericCursorHelper {
 

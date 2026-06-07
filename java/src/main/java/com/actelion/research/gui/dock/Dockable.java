@@ -1,7 +1,7 @@
 package com.actelion.research.gui.dock;
 
 import javax.swing.*;
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 /**
  * A lightweight component derived from JPanel that features certain subcomponents

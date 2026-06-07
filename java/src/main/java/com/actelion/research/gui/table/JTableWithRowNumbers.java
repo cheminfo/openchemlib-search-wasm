@@ -11,10 +11,10 @@ import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
-import java.awt.*;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.event.MouseEvent;
+import org.cheminfo.awt.event.MouseListener;
+import org.cheminfo.awt.event.MouseMotionListener;
 import java.util.Vector;
 
 public class JTableWithRowNumbers extends JTable implements TableModelListener {

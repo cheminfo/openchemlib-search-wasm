@@ -70,9 +70,7 @@ test('smarts options', () => {
   expect(fragment.toSmarts()).toBe('c1cc[c;!H0]cc1');
 });
 
-// TODO(wasm): toSVG needs java.awt (Color / font metrics), which is not available
-// in the WasmGC build. The entire SVG surface is skipped until an SVG path exists.
-describe.skip('toSVG', () => {
+describe('toSVG', () => {
   it('should create a valid SVG with requested size and id', () => {
     const mol = Molecule.fromSmiles('CCOCCO');
     const svg = mol.toSVG(300, 150, 'myId');

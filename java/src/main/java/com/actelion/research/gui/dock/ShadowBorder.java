@@ -4,7 +4,7 @@ import com.actelion.research.gui.hidpi.HiDPIHelper;
 import com.actelion.research.util.ColorHelper;
 
 import javax.swing.border.AbstractBorder;
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 public class ShadowBorder extends AbstractBorder {
     private static final long serialVersionUID = 0x20070807;

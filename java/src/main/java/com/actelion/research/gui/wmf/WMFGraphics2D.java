@@ -33,13 +33,13 @@
 
 package com.actelion.research.gui.wmf;
 
-import java.awt.*;
-import java.awt.font.FontRenderContext;
-import java.awt.font.GlyphVector;
-import java.awt.font.TextLayout;
-import java.awt.geom.*;
-import java.awt.image.*;
-import java.awt.image.renderable.RenderableImage;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.font.FontRenderContext;
+import org.cheminfo.awt.font.GlyphVector;
+import org.cheminfo.awt.font.TextLayout;
+import org.cheminfo.awt.geom.*;
+import org.cheminfo.awt.image.*;
+import org.cheminfo.awt.image.renderable.RenderableImage;
 import java.text.AttributedCharacterIterator;
 import java.util.Iterator;
 import java.util.Map;
@@ -337,7 +337,7 @@ public class WMFGraphics2D extends Graphics2D
 
     public void drawArc(int x, int y, int width, int height, int startAngle, int arcAngle)
     {
-        draw(new java.awt.geom.Arc2D.Float(x, y, width, height, startAngle, arcAngle, Arc2D.OPEN));
+        draw(new org.cheminfo.awt.geom.Arc2D.Float(x, y, width, height, startAngle, arcAngle, Arc2D.OPEN));
     }
 
     public void drawGlyphVector(GlyphVector glyphvector, float f, float f1)
@@ -358,7 +358,7 @@ public class WMFGraphics2D extends Graphics2D
             sx2,
             sy2
         };
-        Rectangle rectangle = (new java.awt.geom.Line2D.Float(dx1, dy1, dx2, dy2)).getBounds();
+        Rectangle rectangle = (new org.cheminfo.awt.geom.Line2D.Float(dx1, dy1, dx2, dy2)).getBounds();
         Shape shape = trans.createTransformedShape(rectangle);
         Rectangle rectangle1 = shape.getBounds();
         Image image1 = transformImage(image, ai, rectangle1, imageobserver, color1);
@@ -416,12 +416,12 @@ public class WMFGraphics2D extends Graphics2D
 
     public void drawLine(int x1, int y1, int x2, int y2)
     {
-        draw(new GeneralPath(new java.awt.geom.Line2D.Float(x1, y1, x2, y2)));
+        draw(new GeneralPath(new org.cheminfo.awt.geom.Line2D.Float(x1, y1, x2, y2)));
     }
 
     public void drawOval(int x, int y, int width, int height)
     {
-        draw(new java.awt.geom.Ellipse2D.Float(x, y, width, height));
+        draw(new org.cheminfo.awt.geom.Ellipse2D.Float(x, y, width, height));
     }
 
     public void drawPolygon(int xPoints[], int yPoints[], int i)
@@ -462,7 +462,7 @@ public class WMFGraphics2D extends Graphics2D
 
     public void drawRoundRect(int x, int y, int width, int height, int arcWidth, int arcHeight)
     {
-        draw(new java.awt.geom.RoundRectangle2D.Float(x, y, width, height, arcWidth, arcHeight));
+        draw(new org.cheminfo.awt.geom.RoundRectangle2D.Float(x, y, width, height, arcWidth, arcHeight));
     }
 
     public void drawString(String s, float x, float y)
@@ -471,7 +471,7 @@ public class WMFGraphics2D extends Graphics2D
             boolean noClipping = deviceclip == null;
             if (!noClipping) {
                 GlyphVector glyphvector = getFont().createGlyphVector(getFontRenderContext(), s);
-                java.awt.geom.Rectangle2D rectangle2d = glyphvector.getOutline(x, y).getBounds2D();
+                org.cheminfo.awt.geom.Rectangle2D rectangle2d = glyphvector.getOutline(x, y).getBounds2D();
                 noClipping = deviceclip.contains(trans.createTransformedShape(rectangle2d).getBounds2D());
             }
             if (noClipping) {
@@ -500,7 +500,7 @@ public class WMFGraphics2D extends Graphics2D
                         wmfg.setFont(getFont().deriveFont(f2));
                         if (scale != 0.0D)
                             wmfg.setFontEscapement((int) ((-scale * 1800D) / Math.PI));
-                        java.awt.geom.Point2D.Double double1 = new java.awt.geom.Point2D.Double(
+                        org.cheminfo.awt.geom.Point2D.Double double1 = new org.cheminfo.awt.geom.Point2D.Double(
                             (double) x + getFont().getTransform().getTranslateX(), (double) y + getFont().getTransform().getTranslateY());
                         trans.transform(double1, double1);
                         wmfg.drawString(s, (int) double1.getX(), (int) double1.getY());
@@ -541,12 +541,12 @@ public class WMFGraphics2D extends Graphics2D
 
     public void fillArc(int x, int y, int width, int height, int startAngle, int arcAngle)
     {
-        fill(new java.awt.geom.Arc2D.Float(x, y, width, height, startAngle, arcAngle, Arc2D.PIE));
+        fill(new org.cheminfo.awt.geom.Arc2D.Float(x, y, width, height, startAngle, arcAngle, Arc2D.PIE));
     }
 
     public void fillOval(int x, int y, int width, int height)
     {
-        fill(new java.awt.geom.Ellipse2D.Float(x, y, width, height));
+        fill(new org.cheminfo.awt.geom.Ellipse2D.Float(x, y, width, height));
     }
 
     public void fillPolygon(int xPoints[], int yPoints[], int i)
@@ -561,7 +561,7 @@ public class WMFGraphics2D extends Graphics2D
 
     public void fillRoundRect(int x, int y, int width, int height, int arcWidth, int arcHeight)
     {
-        fill(new java.awt.geom.RoundRectangle2D.Float(x, y, width, height, arcWidth, arcHeight));
+        fill(new org.cheminfo.awt.geom.RoundRectangle2D.Float(x, y, width, height, arcWidth, arcHeight));
     }
 
     public Color getBackground()
@@ -627,7 +627,7 @@ public class WMFGraphics2D extends Graphics2D
         return paint;
     }
 
-    public Object getRenderingHint(java.awt.RenderingHints.Key key)
+    public Object getRenderingHint(org.cheminfo.awt.RenderingHints.Key key)
     {
         return g2D.getRenderingHint(key);
     }
@@ -750,7 +750,7 @@ public class WMFGraphics2D extends Graphics2D
         wmfg.setPaintMode();
     }
 
-    public void setRenderingHint(java.awt.RenderingHints.Key key, Object obj)
+    public void setRenderingHint(org.cheminfo.awt.RenderingHints.Key key, Object obj)
     {
         g2D.setRenderingHint(key, obj);
     }

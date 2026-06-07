@@ -9,8 +9,8 @@ import javax.swing.MenuElement;
 import javax.swing.UIManager;
 import javax.swing.plaf.MenuItemUI;
 import javax.swing.plaf.PopupMenuUI;
-import java.awt.Component;
-import java.awt.ComponentOrientation;
+import org.cheminfo.awt.Component;
+import org.cheminfo.awt.ComponentOrientation;
 
 
 

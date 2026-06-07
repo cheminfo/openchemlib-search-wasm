@@ -40,9 +40,9 @@ import com.actelion.research.gui.StructureListener;
 import com.actelion.research.gui.hidpi.HiDPIHelper;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.event.ActionEvent;
+import org.cheminfo.awt.event.ActionListener;
 import java.util.ArrayList;
 
 public class SwingEditorDialog extends JDialog implements ActionListener {

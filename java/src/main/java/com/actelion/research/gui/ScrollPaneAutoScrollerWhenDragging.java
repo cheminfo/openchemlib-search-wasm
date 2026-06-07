@@ -3,7 +3,7 @@ package com.actelion.research.gui;
 import com.actelion.research.gui.hidpi.HiDPIHelper;
 
 import javax.swing.*;
-import java.awt.*;
+import org.cheminfo.awt.*;
 
 public class ScrollPaneAutoScrollerWhenDragging {
 	private static final int SCROLL_AREA_HEIGHT = HiDPIHelper.scale(32);

@@ -36,7 +36,7 @@ package com.actelion.research.calc;
 
 import com.actelion.research.chem.SSSearcherWithIndex;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;

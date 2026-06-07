@@ -39,7 +39,7 @@ import com.actelion.research.chem.descriptor.flexophore.generator.ConstantsFlexo
 import com.actelion.research.chem.interactions.statistics.InteractionAtomTypeCalculator;
 import com.actelion.research.util.StringFunctions;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;

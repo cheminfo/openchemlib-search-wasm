@@ -4,8 +4,8 @@ import com.actelion.research.gui.generic.GenericActionEvent;
 import com.actelion.research.gui.generic.GenericComboBox;
 
 import javax.swing.*;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
+import org.cheminfo.awt.event.ItemEvent;
+import org.cheminfo.awt.event.ItemListener;
 
 public class SwingComboBox extends SwingComponent implements GenericComboBox,ItemListener {
 	private JComboBox mComboBox;

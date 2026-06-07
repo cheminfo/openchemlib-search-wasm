@@ -33,7 +33,7 @@
 
 package com.actelion.research.util;
 
-import java.awt.Color;
+import org.cheminfo.awt.Color;
 
 public class ColorHelper {
 	private static final float[] PERCEIVED_BRIGHTNESS = { 0.299f, 0.587f, 0.114f };

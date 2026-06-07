@@ -37,7 +37,7 @@ import com.actelion.research.chem.io.CompoundFileHelper;
 import com.actelion.research.gui.hidpi.HiDPIHelper;
 
 import javax.swing.*;
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;

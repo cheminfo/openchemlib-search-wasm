@@ -19,11 +19,11 @@
 
 package com.actelion.research.util;
 
-import java.awt.Dimension;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBuffer;
-import java.awt.image.IndexColorModel;
-import java.awt.image.Raster;
+import org.cheminfo.awt.Dimension;
+import org.cheminfo.awt.image.BufferedImage;
+import org.cheminfo.awt.image.DataBuffer;
+import org.cheminfo.awt.image.IndexColorModel;
+import org.cheminfo.awt.image.Raster;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;

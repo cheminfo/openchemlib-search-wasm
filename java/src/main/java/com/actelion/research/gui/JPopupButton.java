@@ -3,9 +3,9 @@ package com.actelion.research.gui;
 import com.actelion.research.gui.hidpi.HiDPIIconButton;
 
 import javax.swing.*;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import org.cheminfo.awt.event.ActionListener;
+import org.cheminfo.awt.event.MouseAdapter;
+import org.cheminfo.awt.event.MouseEvent;
 
 public class JPopupButton extends HiDPIIconButton {
 	private JPopupMenu mPopup;

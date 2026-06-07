@@ -40,7 +40,7 @@ import com.actelion.research.gui.generic.GenericPolygon;
 import com.actelion.research.gui.generic.GenericRectangle;
 import com.actelion.research.util.ColorHelper;
 
-import java.awt.*;
+import org.cheminfo.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 

@@ -36,7 +36,7 @@ package com.actelion.research.gui.dnd;
 import com.actelion.research.chem.*;
 import com.actelion.research.chem.dnd.ChemistryFlavors;
 
-import java.awt.datatransfer.*;
+import org.cheminfo.awt.datatransfer.*;
 import java.io.IOException;
 
 public class MoleculeTransferable implements Transferable,ClipboardOwner {

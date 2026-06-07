@@ -60,6 +60,60 @@ public final class Options {
     boolean isKekulizedOutput();
   }
 
+  /** Depictor display-mode options for {@link Molecule#_toSVG}. */
+  public interface ToSVG extends JSObject {
+    @JSProperty
+    boolean isNoTabus();
+
+    @JSProperty
+    boolean isShowAtomNumber();
+
+    @JSProperty
+    boolean isShowBondNumber();
+
+    @JSProperty
+    boolean isHighlightQueryFeatures();
+
+    @JSProperty
+    boolean isShowMapping();
+
+    @JSProperty
+    boolean isSuppressChiralText();
+
+    @JSProperty
+    boolean isSuppressCIPParity();
+
+    @JSProperty
+    boolean isSuppressESR();
+
+    @JSProperty
+    boolean isNoCarbonLabelWithCustomLabel();
+
+    @JSProperty
+    boolean isNoAtomCustomLabels();
+
+    @JSProperty
+    boolean isShowSymmetrySimple();
+
+    @JSProperty
+    boolean isShowSymmetryStereoHeterotopicity();
+
+    @JSProperty
+    boolean isNoImplicitAtomLabelColors();
+
+    @JSProperty
+    boolean isNoStereoProblem();
+
+    @JSProperty
+    boolean isNoColorOnESRAndCIP();
+
+    @JSProperty
+    boolean isNoImplicitHydrogen();
+
+    @JSProperty
+    boolean isDrawBondsInGray();
+  }
+
   /** Options for {@link Molecule#addImplicitHydrogens}. */
   public interface ImplicitHydrogens extends JSObject {
     /** Raw value: absent means "all atoms", a number means a single atom. */

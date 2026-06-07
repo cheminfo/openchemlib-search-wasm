@@ -1,7 +1,7 @@
 package com.actelion.research.gui.dock;
 
-import java.awt.*;
-import java.awt.image.BufferedImage;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.image.BufferedImage;
 
 /**
  * @author Thomas Sander, idea taken from flexdock GhostPreview by Christopher Butler

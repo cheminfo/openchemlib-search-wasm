@@ -1,11 +1,11 @@
 package com.actelion.research.gui;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.AdjustmentEvent;
-import java.awt.event.AdjustmentListener;
-import java.awt.event.MouseWheelEvent;
-import java.awt.event.MouseWheelListener;
+import org.cheminfo.awt.*;
+import org.cheminfo.awt.event.AdjustmentEvent;
+import org.cheminfo.awt.event.AdjustmentListener;
+import org.cheminfo.awt.event.MouseWheelEvent;
+import org.cheminfo.awt.event.MouseWheelListener;
 
 public class JScrollablePopupMenu extends JPopupMenu {
 	protected int maximumVisibleRows = 24;
