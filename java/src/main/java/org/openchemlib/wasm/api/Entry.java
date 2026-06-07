@@ -30,6 +30,8 @@ public final class Entry {
     use(Reactor.class);
     use(Transformer.class);
     use(DrugScoreCalculator.class);
+    use(SDFileParser.class);
+    use(Util.class);
   }
 
   private static void use(Class<?> clazz) {

@@ -2,6 +2,7 @@ package org.openchemlib.wasm.api;
 
 import com.actelion.research.chem.StereoMolecule;
 import org.teavm.jso.JSExport;
+import org.teavm.jso.JSProperty;
 
 /**
  * WASM facade for {@code com.actelion.research.chem.StereoMolecule}, mirroring
@@ -95,11 +96,52 @@ public class Molecule {
   /**
    * Canonical isomeric SMILES of this molecule.
    *
+   * @param options output options (createSmarts, includeMapping, kekulizedOutput),
+   *     or undefined for defaults
    * @return the SMILES
    */
   @JSExport
-  public String toIsomericSmiles() {
-    return new com.actelion.research.chem.IsomericSmilesCreator(molecule).getSmiles();
+  public String toIsomericSmiles(Options.IsomericSmiles options) {
+    boolean present = options != null && !org.teavm.jso.core.JSObjects.isUndefined(options);
+    int mode = 0;
+    if (present) {
+      if (options.isCreateSmarts()) {
+        mode |= com.actelion.research.chem.IsomericSmilesCreator.MODE_CREATE_SMARTS;
+      }
+      if (options.isIncludeMapping()) {
+        mode |= com.actelion.research.chem.IsomericSmilesCreator.MODE_INCLUDE_MAPPING;
+      }
+      if (options.isKekulizedOutput()) {
+        mode |= com.actelion.research.chem.IsomericSmilesCreator.MODE_KEKULIZED_OUTPUT;
+      }
+    }
+    return new com.actelion.research.chem.IsomericSmilesCreator(molecule, mode).getSmiles();
+  }
+
+  /**
+   * SMILES of this molecule with aromatic rings written in their kekulized form.
+   *
+   * @deprecated use {@link #toIsomericSmiles} with {@code kekulizedOutput: true}
+   * @return the SMILES
+   */
+  @Deprecated
+  @JSExport
+  public String toSmiles() {
+    return new com.actelion.research.chem.IsomericSmilesCreator(
+            molecule, com.actelion.research.chem.IsomericSmilesCreator.MODE_KEKULIZED_OUTPUT)
+        .getSmiles();
+  }
+
+  /**
+   * SMARTS pattern of this query fragment.
+   *
+   * @return the SMARTS
+   */
+  @JSExport
+  public String toSmarts() {
+    return new com.actelion.research.chem.IsomericSmilesCreator(
+            molecule, com.actelion.research.chem.IsomericSmilesCreator.MODE_CREATE_SMARTS)
+        .getSmiles();
   }
 
   /**
@@ -110,6 +152,16 @@ public class Molecule {
   @JSExport
   public String toMolfile() {
     return new com.actelion.research.chem.MolfileCreator(molecule).getMolfile();
+  }
+
+  /**
+   * The molecule encoded as a V3000 molfile.
+   *
+   * @return the molfile
+   */
+  @JSExport
+  public String toMolfileV3() {
+    return new com.actelion.research.chem.MolfileV3Creator(molecule).getMolfile();
   }
 
   /**
@@ -453,5 +505,281 @@ public class Molecule {
   @JSExport
   public static int getAtomicNoFromLabel(String atomLabel, int allowedPseudoAtomGroups) {
     return StereoMolecule.getAtomicNoFromLabel(atomLabel, allowedPseudoAtomGroups);
+  }
+
+  /** The {@code {molecule, map}} value object returned by {@link #fromMolfileWithAtomMap}. */
+  public interface AtomMapResult extends org.teavm.jso.JSObject {
+    @JSProperty
+    void setMolecule(Molecule molecule);
+
+    @JSProperty
+    void setMap(int[] map);
+  }
+
+  /** The {@code {idCode, coordinates}} value object returned by {@link #getIDCodeAndCoordinates}. */
+  public interface IDCodeAndCoordinates extends org.teavm.jso.JSObject {
+    @JSProperty
+    void setIdCode(String idCode);
+
+    @JSProperty
+    void setCoordinates(String coordinates);
+  }
+
+  /**
+   * Parses a V2000 or V3000 molfile, keeping the mapping between the molfile
+   * atom order and the (compacted) molecule atom order, including hydrogens.
+   *
+   * @param molfile the molfile content
+   * @return a {@code {molecule, map}} object where {@code map[i]} is the molfile
+   *     atom index of the molecule's atom {@code i}
+   */
+  @JSExport
+  public static AtomMapResult fromMolfileWithAtomMap(String molfile) {
+    try {
+      com.actelion.research.chem.MolfileParser parser =
+          new com.actelion.research.chem.MolfileParser(
+              com.actelion.research.chem.MolfileParser.MODE_KEEP_HYDROGEN_MAP);
+      StereoMolecule parsed = parser.getCompactMolecule(molfile);
+      int[] map = parser.getHandleHydrogenMap();
+      AtomMapResult result = org.teavm.jso.core.JSObjects.create().cast();
+      result.setMolecule(new Molecule(parsed));
+      result.setMap(map);
+      return result;
+    } catch (Exception e) {
+      throw new IllegalArgumentException(e.getMessage());
+    }
+  }
+
+  /**
+   * The idcode together with its encoded 2D coordinates.
+   *
+   * @return a {@code {idCode, coordinates}} object
+   */
+  @JSExport
+  public IDCodeAndCoordinates getIDCodeAndCoordinates() {
+    IDCodeAndCoordinates result = org.teavm.jso.core.JSObjects.create().cast();
+    result.setIdCode(molecule.getIDCode());
+    result.setCoordinates(molecule.getIDCoordinates());
+    return result;
+  }
+
+  /**
+   * Sets the X coordinate of an atom.
+   *
+   * @param atom the atom index
+   * @param x the x coordinate
+   */
+  @JSExport
+  public void setAtomX(int atom, double x) {
+    molecule.setAtomX(atom, x);
+  }
+
+  /**
+   * Sets the Y coordinate of an atom.
+   *
+   * @param atom the atom index
+   * @param y the y coordinate
+   */
+  @JSExport
+  public void setAtomY(int atom, double y) {
+    molecule.setAtomY(atom, y);
+  }
+
+  /**
+   * Sets the Z coordinate of an atom.
+   *
+   * @param atom the atom index
+   * @param z the z coordinate
+   */
+  @JSExport
+  public void setAtomZ(int atom, double z) {
+    molecule.setAtomZ(atom, z);
+  }
+
+  /**
+   * Sets or clears a single atom query feature (only meaningful for query
+   * fragments).
+   *
+   * @param atom the atom index
+   * @param feature the query-feature bit mask (a cAtomQF* constant)
+   * @param value true to set the feature, false to clear it
+   */
+  @JSExport
+  public void setAtomQueryFeature(int atom, double feature, boolean value) {
+    molecule.setAtomQueryFeature(atom, (long) feature, value);
+  }
+
+  /**
+   * Decodes the query features of an atom into a value object with one boolean
+   * per query flag (and ring-size numbers).
+   *
+   * @param atom the atom index
+   * @return the atom query-feature object
+   */
+  @JSExport
+  public MoleculeQueryFeatures.AtomResult getAtomQueryFeaturesObject(int atom) {
+    return MoleculeQueryFeatures.ofAtom(molecule, atom);
+  }
+
+  /**
+   * Decodes the query features of a bond into a value object.
+   *
+   * @param bond the bond index
+   * @return the bond query-feature object
+   */
+  @JSExport
+  public MoleculeQueryFeatures.BondResult getBondQueryFeaturesObject(int bond) {
+    return MoleculeQueryFeatures.ofBond(molecule, bond);
+  }
+
+  /**
+   * The canonical idcode produced with the given canonization mode flags.
+   *
+   * @param flag the canonization mode bit mask
+   * @return the idcode
+   */
+  @JSExport
+  public String getCanonizedIDCode(int flag) {
+    return new com.actelion.research.chem.Canonizer(molecule, flag).getIDCode();
+  }
+
+  /**
+   * The final canonical rank of every atom, produced with the given canonization
+   * mode flags.
+   *
+   * @param flag the canonization mode bit mask
+   * @return the final ranks as an Int32Array
+   */
+  @JSExport
+  public int[] getFinalRanks(int flag) {
+    return new com.actelion.research.chem.Canonizer(molecule, flag).getFinalRank();
+  }
+
+  /**
+   * A human-readable description of the molecule's overall chirality.
+   *
+   * @return the chiral text
+   */
+  @JSExport
+  public String getChiralText() {
+    return molecule.getChiralText();
+  }
+
+  /**
+   * Adds explicit stereo information (ESR) to stereo centers that currently lack
+   * it, using the given ESR type, or undefined for the default absolute type.
+   *
+   * @param esrType the ESR type (a cESRType* constant), or undefined for default
+   */
+  @JSExport
+  public void addMissingChirality(org.teavm.jso.JSObject esrType) {
+    if (esrType == null || org.teavm.jso.core.JSObjects.isUndefined(esrType)) {
+      com.actelion.research.chem.contrib.DiastereotopicAtomID.addMissingChirality(molecule);
+    } else {
+      int type = esrType.<org.teavm.jso.core.JSNumber>cast().intValue();
+      com.actelion.research.chem.contrib.DiastereotopicAtomID.addMissingChirality(molecule, type);
+    }
+  }
+
+  /**
+   * Adjusts the position marker of every custom atom label.
+   *
+   * <ul>
+   *   <li>{@code "superscript"} prefixes each label with {@code "]"}.
+   *   <li>{@code "normal"} removes a leading {@code "]"}.
+   *   <li>{@code "auto"} makes labels superscript except on carbon atoms.
+   *   <li>{@code undefined} leaves the labels untouched.
+   * </ul>
+   *
+   * @param customLabelPosition the position mode, or undefined for no change
+   */
+  @JSExport
+  public void changeCustomLabelPosition(String customLabelPosition) {
+    if (customLabelPosition == null) {
+      return;
+    }
+    switch (customLabelPosition) {
+      case "superscript":
+        for (int i = 0; i < molecule.getAllAtoms(); i++) {
+          String label = molecule.getAtomCustomLabel(i);
+          if (label != null && !label.startsWith("]")) {
+            molecule.setAtomCustomLabel(i, "]" + label);
+          }
+        }
+        break;
+      case "normal":
+        for (int i = 0; i < molecule.getAllAtoms(); i++) {
+          String label = molecule.getAtomCustomLabel(i);
+          if (label != null && label.startsWith("]")) {
+            molecule.setAtomCustomLabel(i, label.substring(1));
+          }
+        }
+        break;
+      case "auto":
+        for (int i = 0; i < molecule.getAllAtoms(); i++) {
+          String label = molecule.getAtomCustomLabel(i);
+          if (label != null) {
+            if ("C".equals(molecule.getAtomLabel(i))) {
+              if (label.startsWith("]")) {
+                molecule.setAtomCustomLabel(i, label.substring(1));
+              }
+            } else if (!label.startsWith("]")) {
+              molecule.setAtomCustomLabel(i, "]" + label);
+            }
+          }
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  /**
+   * Computes the next free custom atom label, starting from the given one (or
+   * {@code "1"} when empty) and incrementing the trailing number or letter until
+   * an unused label is found.
+   *
+   * @param label the starting label (may be empty)
+   * @return the next custom atom label that is not already used in this molecule
+   */
+  @JSExport
+  public String getNextCustomAtomLabel(String label) {
+    String nextLabel = (label == null || label.isEmpty()) ? "1" : label;
+    java.util.Set<String> existingLabels = new java.util.HashSet<>();
+    for (int i = 0; i < molecule.getAllAtoms(); i++) {
+      String existingLabel = molecule.getAtomCustomLabel(i);
+      if (existingLabel != null) {
+        existingLabels.add(existingLabel);
+      }
+    }
+    int counter = 0;
+    while (existingLabels.contains(nextLabel) && counter++ < 100) {
+      nextLabel = incrementLabel(nextLabel);
+    }
+    return nextLabel;
+  }
+
+  private static final java.util.regex.Pattern NUMBER_PATTERN =
+      java.util.regex.Pattern.compile("(\\d+)");
+  private static final java.util.regex.Pattern LETTER_PATTERN =
+      java.util.regex.Pattern.compile("([a-yA-Y])([^a-zA-Z]*)$");
+
+  private static String incrementLabel(String label) {
+    java.util.regex.Matcher numberMatcher = NUMBER_PATTERN.matcher(label);
+    if (numberMatcher.find()) {
+      int number = Integer.parseInt(numberMatcher.group(1));
+      return NUMBER_PATTERN.matcher(label).replaceFirst(Integer.toString(number + 1));
+    }
+    java.util.regex.Matcher letterMatcher = LETTER_PATTERN.matcher(label);
+    if (letterMatcher.find()) {
+      int codePoint = letterMatcher.group(1).codePointAt(0);
+      String nextChar = new String(Character.toChars(codePoint + 1));
+      if ("Z".equals(nextChar) || "z".equals(nextChar)) {
+        return "1";
+      }
+      String suffix = letterMatcher.group(2);
+      return label.substring(0, letterMatcher.start()) + nextChar + suffix;
+    }
+    return "1";
   }
 }

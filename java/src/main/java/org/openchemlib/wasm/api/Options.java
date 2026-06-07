@@ -48,6 +48,18 @@ public final class Options {
     Molecule getMolecule();
   }
 
+  /** Options for {@link Molecule#toIsomericSmiles}. */
+  public interface IsomericSmiles extends JSObject {
+    @JSProperty
+    boolean isCreateSmarts();
+
+    @JSProperty
+    boolean isIncludeMapping();
+
+    @JSProperty
+    boolean isKekulizedOutput();
+  }
+
   /** Options for {@link Molecule#addImplicitHydrogens}. */
   public interface ImplicitHydrogens extends JSObject {
     /** Raw value: absent means "all atoms", a number means a single atom. */
@@ -177,5 +189,16 @@ public final class Options {
     /** Raw value: present-or-absent selects the mode overload. */
     @JSProperty
     JSObject getMode();
+  }
+
+  /** Options for {@link Util#getHoseCodesFromDiastereotopicID}. */
+  public interface HoseCodes extends JSObject {
+    /** Raw value: absent means the default sphere size of {@code 5}. */
+    @JSProperty
+    JSObject getMaxSphereSize();
+
+    /** Raw value: absent means the default type of {@code 0}. */
+    @JSProperty
+    JSObject getType();
   }
 }
