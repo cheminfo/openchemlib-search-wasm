@@ -107,7 +107,7 @@ const wasmBest = throughput.get(`wasm ${best}`);
 const jsBest = throughput.get(`openchemlib-js ${best}`);
 conclude(
   wasmBest && jsBest
-    ? `Both engines parallelise, so the honest claim is per core: openchemlib-wasm is ` +
+    ? `Both engines parallelise, so the honest claim is per core: openchemlib-search-wasm is ` +
         `${(wasmBest / jsBest).toFixed(2)}x openchemlib-js on ${best} workers, the same ratio it ` +
         `has on one. ${count(hits)} of ${count(corpus.total)} molecules matched ` +
         `${query.name} in ${(corpus.total / wasmBest).toFixed(2)} s.`

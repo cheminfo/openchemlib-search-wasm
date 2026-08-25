@@ -42,7 +42,7 @@ const molecules = idCodes.length;
 const query = queryByName('benzene');
 
 printHeader(
-  `openchemlib-wasm vs openchemlib-js ${openchemlibVersion()} — batch similarity (FragFp, Tanimoto)`,
+  `openchemlib-search-wasm vs openchemlib-js ${openchemlibVersion()} — batch similarity (FragFp, Tanimoto)`,
   corpus,
 );
 
@@ -160,7 +160,7 @@ conclude(
   `Building the fingerprint is ${count(Math.round(wasmPer / storePer))}x the cost of comparing ` +
     'one, so a caller that already stores fingerprints should never call similaritySearch: ' +
     `${span(storePer)} of plain JS ranks the whole corpus against ${span(wasmPer)} of WASM. ` +
-    `openchemlib-wasm is ${(jsPer / wasmPer).toFixed(2)}x openchemlib-js when idcodes really are ` +
+    `openchemlib-search-wasm is ${(jsPer / wasmPer).toFixed(2)}x openchemlib-js when idcodes really are ` +
     'all you have.',
 );
 

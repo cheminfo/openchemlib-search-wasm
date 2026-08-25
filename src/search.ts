@@ -43,8 +43,8 @@ const DEFAULT_THRESHOLD = 0.8;
  * corpus.
  *
  * Returning `false` from `onStep` stops the search, which is what makes a common query cheap: with
- * a 62% hit rate, stopping at the first 100 matches reads 320 molecules instead of 409,686 and
- * takes 3 ms instead of 8.7 s.
+ * a 62% hit rate, stopping at the first 100 matches reads 768 molecules instead of 409,686 and
+ * takes 7 ms instead of 9.2 s.
  * @param idCodeQuery - The query, as an idcode.
  * @param idCodes - The molecules to search.
  * @param result - The caller's buffer: a `Uint8Array` for `substructure`, a `Float32Array` for

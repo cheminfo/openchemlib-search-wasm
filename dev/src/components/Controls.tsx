@@ -92,7 +92,7 @@ export function Controls(props: ControlsProps) {
           label="engine"
           value={choice}
           options={[
-            { value: 'wasm', label: 'openchemlib-wasm' },
+            { value: 'wasm', label: 'openchemlib-search-wasm' },
             { value: 'gwt', label: 'openchemlib-js' },
             { value: 'ab', label: 'A/B — both, in turn' },
           ]}

@@ -1,12 +1,12 @@
-# openchemlib-wasm
+# openchemlib-search-wasm
 
-Two functions — batch substructure search and batch similarity search over arrays of OpenChemLib
-idcodes — with OpenChemLib compiled to WebAssembly.
+Batch substructure search, batch similarity search and FragFp fingerprints over arrays of
+OpenChemLib idcodes — with OpenChemLib compiled to WebAssembly.
 
 ## Install
 
 ```sh
-npm install openchemlib-wasm
+npm install openchemlib-search-wasm
 ```
 
 ## Use
@@ -20,19 +20,21 @@ similaritySearch(idCodeQuery: string, idCodes: string[], result: Float32Array): 
 search(idCodeQuery: string, idCodes: string[], result: ResultBuffer,
        options?: SearchOptions): Promise<SearchSummary>;
 
-// the 512-bit FragFp of every idcode, for a fingerprint table
+// the 512-bit FragFp, for a fingerprint table: sixteen 32-bit words per molecule
+getIndex(idCode: string, result?: Int32Array): Int32Array;
 getIndexes(idCodes: string[], result?: Int32Array): Int32Array;
 ```
 
-`result` is your buffer. Both functions reset it, then write one entry per idcode, in order, as the
-scan advances. It must be exactly as long as `idCodes`.
+`result` is your buffer. The three search functions reset it, then write one entry per idcode, in
+order, as the scan advances, so it must be exactly as long as `idCodes`. `getIndexes` is the
+exception: it writes `INDEX_WORDS` (16) words per idcode and resets nothing.
 
 ```js
 import {
   similaritySearch,
   ssSearch,
   SubstructureResult,
-} from 'openchemlib-wasm';
+} from 'openchemlib-search-wasm';
 
 const benzene = 'gFp@DiTt@@B';
 // benzene, formic acid, naphthalene
@@ -75,9 +77,9 @@ coefficient on OpenChemLib's 512-bit FragFp.
 
 `0` is a legitimate similarity, which is why "not yet" is `NaN` and not `0`.
 
-**Why `Float32Array` and not `Float16Array`.** Writing one result costs 0.1227 µs per molecule —
+**Why `Float32Array` and not `Float16Array`.** Writing one result costs 0.1213 µs per molecule —
 0.013% of the 947 µs a similarity entry costs to compute — so the element type cannot make the scan
-measurably faster either way. Half floats would only halve the buffer (1.6 MB instead of 3.2 MB for
+measurably faster either way. Half floats would only halve the buffer (0.8 MB instead of 1.6 MB for
 400,000 molecules) and would cost precision: a 10-bit mantissa resolves a coefficient in [0, 1] to
 about 0.001, and every value would stop matching openchemlib-js bit for bit, which is what the tests
 assert. TeaVM 0.14.1 also ships no `Float16Array` binding, so it would mean hand-encoding halves into
@@ -97,7 +99,7 @@ one worker, so plain reads and writes are enough — no atomics.
 ```js
 // main.js
 import { Worker } from 'node:worker_threads';
-import { SubstructureResult } from 'openchemlib-wasm';
+import { SubstructureResult } from 'openchemlib-search-wasm';
 
 const idCodes = await loadYourIdCodes(); // string[]
 const workerCount = 8;
@@ -135,7 +137,7 @@ clearInterval(timer);
 ```js
 // worker.js
 import { parentPort } from 'node:worker_threads';
-import { ssSearch } from 'openchemlib-wasm';
+import { ssSearch } from 'openchemlib-search-wasm';
 
 parentPort.on('message', ({ idCodeQuery, idCodes, result }) => {
   ssSearch(idCodeQuery, idCodes, result);
@@ -157,7 +159,7 @@ The vocabulary is the one `openchemlib-utils` and `openchemlib-sqlite` already u
 `'substructure'` / `'similarity'`, `interval`, and an `AbortController`.
 
 ```js
-import { search, SubstructureResult } from 'openchemlib-wasm';
+import { search, SubstructureResult } from 'openchemlib-search-wasm';
 
 const result = new Uint8Array(idCodes.length);
 const hits = [];
@@ -188,9 +190,9 @@ const summary = await search(benzene, idCodes, result, {
 
 |                                | scanned |       time |
 | ------------------------------ | ------: | ---------: |
-| whole corpus                   | 409,686 |      8.8 s |
-| stop at the first 100 matches  |     673 | **6.3 ms** |
-| stop at the first 1000 matches |   1,799 |    20.3 ms |
+| whole corpus                   | 409,686 |     9.22 s |
+| stop at the first 100 matches  |     768 | **6.9 ms** |
+| stop at the first 1000 matches |   1,792 |    19.2 ms |
 
 Chunking costs nothing — 800 chunked calls measure the same as one call over the whole corpus,
 because the idcodes are read out of your array one at a time rather than converted up front. At the
@@ -204,7 +206,7 @@ order `openchemlib-js`'s `createIndex` produces — verified bit for bit. A `Big
 it is exactly the eight columns `openchemlib-sqlite` stores, so there is no conversion and no copy:
 
 ```js
-import { getIndexes } from 'openchemlib-wasm';
+import { getIndexes } from 'openchemlib-search-wasm';
 
 const indexes = getIndexes(idCodes);
 for (let i = 0; i < idCodes.length; i++) {
@@ -216,11 +218,11 @@ for (let i = 0; i < idCodes.length; i++) {
 Building a fingerprint is about forty times a substructure test, so this is the expensive part of
 importing a library — and where the biggest speedup is:
 
-|                                 | per molecule | 409,686 molecules |
-| ------------------------------- | -----------: | ----------------: |
-| `openchemlib-js` `createIndex`  |      4484 µs |          30.6 min |
-| `openchemlib-wasm` `getIndexes` |       897 µs |       **6.1 min** |
-|                                 |              |          **5.0x** |
+|                                        | per molecule | 409,686 molecules |
+| -------------------------------------- | -----------: | ----------------: |
+| `openchemlib-js` `createIndex`         |      4484 µs |          30.6 min |
+| `openchemlib-search-wasm` `getIndexes` |       897 µs |       **6.1 min** |
+|                                        |              |          **5.0x** |
 
 OpenChemLib parses the 512 key fragments once and holds them statically, so a batch pays for them on
 its first molecule and never again. An idcode that will not parse gets sixteen zeros, which no
@@ -257,15 +259,15 @@ Against `openchemlib` 9.25.0 (the GWT build), on 409,686 real idcodes, Apple Sil
 row is produced by a file in `benchmark/`; [benchmark/README.md](benchmark/README.md) carries the
 output and the method.
 
-|                                           |       openchemlib-wasm | openchemlib |            ratio |
-| ----------------------------------------- | ---------------------: | ----------: | ---------------: |
-| substructure, per molecule (six queries)  |                23.9 µs |     43.7 µs |         **1.8x** |
-| substructure, whole corpus, one thread    |                 9.22 s |     16.78 s |         **1.8x** |
-| substructure, whole corpus, eight workers |                 1.98 s |      3.95 s |         **2.0x** |
-| similarity, per molecule                  |                 947 µs |     4738 µs |         **5.0x** |
-| similarity, whole corpus, one thread      |                6.5 min |    32.4 min |         **5.0x** |
-| gzipped payload                           | 119 KB + 16 KB runtime |      336 KB | **2.4x smaller** |
-| engine import, per worker                 |               51–91 ms |    22–32 ms |                  |
+|                                           | openchemlib-search-wasm | openchemlib |            ratio |
+| ----------------------------------------- | ----------------------: | ----------: | ---------------: |
+| substructure, per molecule (six queries)  |                 23.9 µs |     43.7 µs |         **1.8x** |
+| substructure, whole corpus, one thread    |                  9.22 s |     16.78 s |         **1.8x** |
+| substructure, whole corpus, eight workers |                  1.98 s |      3.95 s |         **2.0x** |
+| similarity, per molecule                  |                  947 µs |     4738 µs |         **5.0x** |
+| similarity, whole corpus, one thread      |                 6.5 min |    32.4 min |         **5.0x** |
+| gzipped payload                           |   118 KB + 6 KB runtime |      332 KB | **2.7x smaller** |
+| engine import, per worker                 |                51–91 ms |    22–32 ms |                  |
 
 **The answers are identical.** The same hit counts for six queries across all 409,686 molecules
 (benzene 257,625, pyridine 30,879, sulfonamide 10,826, naphthalene 16,882, plus carboxyl and
@@ -274,24 +276,24 @@ anilide), and similarity values that match bit for bit (max difference 0).
 **Why substructure is only 1.8x.** Half the work is parsing the idcode, and that part is only 1.7x
 faster; the isomorphism is 2.0x:
 
-| Step               | openchemlib-wasm | openchemlib | ratio |
-| ------------------ | ---------------: | ----------: | ----: |
-| parse the idcode   |          11.8 µs |     20.5 µs |  1.7x |
-| match the fragment |          11.2 µs |     22.5 µs |  2.0x |
-| total              |          23.0 µs |     43.0 µs |  1.9x |
+| Step               | openchemlib-search-wasm | openchemlib | ratio |
+| ------------------ | ----------------------: | ----------: | ----: |
+| parse the idcode   |                 11.8 µs |     20.5 µs |  1.7x |
+| match the fragment |                 11.2 µs |     22.5 µs |  2.0x |
+| total              |                 23.0 µs |     43.0 µs |  1.9x |
 
 Benchmarks that search molecules already parsed in memory report 3–6x. That is not the shape of this
 API: it is given idcodes and pays the parse on every one of them.
 
 **The 1.8x is per core, not per worker.** Both engines parallelise the same way, so eight workers of
-`openchemlib` land roughly where four workers of `openchemlib-wasm` do:
+`openchemlib` land roughly where four workers of `openchemlib-search-wasm` do:
 
-| Workers | openchemlib-wasm | Molecules/s | openchemlib | Molecules/s |
-| ------: | ---------------: | ----------: | ----------: | ----------: |
-|       1 |           9.22 s |      44,400 |     16.78 s |      24,400 |
-|       2 |           4.74 s |      86,400 |      8.87 s |      46,200 |
-|       4 |           2.83 s |     144,600 |      5.04 s |      81,300 |
-|       8 |           1.98 s |     206,800 |      3.95 s |     103,800 |
+| Workers | openchemlib-search-wasm | Molecules/s | openchemlib | Molecules/s |
+| ------: | ----------------------: | ----------: | ----------: | ----------: |
+|       1 |                  9.22 s |      44,400 |     16.78 s |      24,400 |
+|       2 |                  4.74 s |      86,400 |      8.87 s |      46,200 |
+|       4 |                  2.83 s |     144,600 |      5.04 s |      81,300 |
+|       8 |                  1.98 s |     206,800 |      3.95 s |     103,800 |
 
 Neither reaches 8x: this machine has six performance cores and four efficiency ones, so an even
 split leaves the efficiency cores finishing last.
@@ -313,13 +315,14 @@ over the whole table.
 Needs WebAssembly GC and, for the worker recipe, `SharedArrayBuffer`: Node 22 or later,
 Chrome/Edge 119+, Firefox 120+, current Safari.
 
-The module ships inside the bundle. `wasm/` holds the 381 KB module as a gzip+base64 string plus the
+The module ships inside the bundle. `wasm/` holds the 382 KB module as a gzip+base64 string plus the
 TeaVM runtime; the loader decodes it with `atob` and `DecompressionStream` and instantiates it —
 no `fetch`, no `fs`, no separate `.wasm` asset to configure in a bundler. That is what lets a worker
 start the module from the same bundle it was loaded from, and the whole import — decode, gunzip,
 compile, instantiate — costs 51–91 ms once per worker.
-The package is an ES module that instantiates on import, so both functions are plain synchronous
-calls.
+The package is an ES module that instantiates on import, so `ssSearch`, `similaritySearch` and
+`getIndexes` are plain synchronous calls. Only `search` is `async`, and only because it yields to
+the event loop between chunks.
 
 ## Building from source
 

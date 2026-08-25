@@ -1,6 +1,6 @@
 # Benchmarks
 
-Five files. Four are [benchmark.js](https://benchmarkjs.com) suites that A/B `openchemlib-wasm`
+Five files. Four are [benchmark.js](https://benchmarkjs.com) suites that A/B `openchemlib-search-wasm`
 against `openchemlib` 9.25.0 in one process on the same idcodes; the fifth is a whole-corpus
 measurement across worker threads, which benchmark.js is the wrong tool for.
 
@@ -60,7 +60,7 @@ leaving it on measures **330 µs per molecule against 23**. A comparison that fo
 
 ### Isolating a parse when the module exports no parser
 
-`openchemlib-wasm` exports two functions and neither of them is "parse this idcode", so `parse.js`
+`openchemlib-search-wasm` exports no parser — none of its five functions is "parse this idcode" — so `parse.js`
 gets at the parse from the outside: it searches for a **400-atom chain**, which `SSSearcher` rejects
 on `fragment.getAtoms() > molecule.getAtoms()` before it builds one feature or walks one bond. What
 is left is the parse and the neighbour arrays. The file checks the corpus's largest molecule (254
@@ -79,16 +79,16 @@ v24.15.0. Corpus: the 409,686 idcodes of reference.cheminfo.org.
 
 ### The table to quote
 
-|                                           | openchemlib-wasm | openchemlib-js 9.25.0 |     ratio |
-| ----------------------------------------- | ---------------: | --------------------: | --------: |
-| substructure, per molecule (6-query mean) |          23.9 µs |               43.7 µs | **1.83x** |
-| substructure, whole corpus, 1 worker      |           9.22 s |               16.78 s | **1.82x** |
-| substructure, whole corpus, 8 workers     |           1.98 s |                3.95 s | **1.99x** |
-| similarity, per molecule                  |           947 µs |               4738 µs | **5.00x** |
-| similarity, whole corpus, 1 worker        |          6.5 min |              32.4 min | **5.00x** |
-| Tanimoto on a **stored** FragFp, plain JS |        0.0316 µs |                     — |           |
-| engine import, per worker                 |         51–91 ms |              22–32 ms |           |
-| JS↔WASM crossing, per molecule            | 0.5519 µs (2.4%) |                     — |           |
+|                                           | openchemlib-search-wasm | openchemlib-js 9.25.0 |     ratio |
+| ----------------------------------------- | ----------------------: | --------------------: | --------: |
+| substructure, per molecule (6-query mean) |                 23.9 µs |               43.7 µs | **1.83x** |
+| substructure, whole corpus, 1 worker      |                  9.22 s |               16.78 s | **1.82x** |
+| substructure, whole corpus, 8 workers     |                  1.98 s |                3.95 s | **1.99x** |
+| similarity, per molecule                  |                  947 µs |               4738 µs | **5.00x** |
+| similarity, whole corpus, 1 worker        |                 6.5 min |              32.4 min | **5.00x** |
+| Tanimoto on a **stored** FragFp, plain JS |               0.0316 µs |                     — |           |
+| engine import, per worker                 |                51–91 ms |              22–32 ms |           |
+| JS↔WASM crossing, per molecule            |        0.5519 µs (2.4%) |                     — |           |
 
 Hit counts are identical for all six queries over all 409,686 molecules, and every similarity
 coefficient matches bit for bit (max difference 0 over 1,000 molecules). Verified whole-corpus hit
@@ -102,7 +102,7 @@ to 91 ms. It is paid once per worker and excluded from every timed scan.
 ### `node benchmark/ssSearch.js`
 
 ```
-openchemlib-wasm vs openchemlib-js 9.25.0 — batch substructure search
+openchemlib-search-wasm vs openchemlib-js 9.25.0 — batch substructure search
 node v24.15.0  darwin arm64  10 cores
 corpus 25,000 idcodes, every 16th of 409,686, mean 39.03 chars
        /Users/lpatiny/git/cheminfo/openchemlib-wasm/dev/public/idcodes.txt
@@ -142,7 +142,7 @@ anilide            23.69          46.02    1.94x       42.2k         21.7k
 sulfonamide        23.53          42.77    1.82x       42.5k         23.4k
 naphthalene        24.65          41.97    1.70x       40.6k         23.8k
 
-openchemlib-wasm is 1.83x openchemlib-js on one thread, over six queries with identical hit counts.
+openchemlib-search-wasm is 1.83x openchemlib-js on one thread, over six queries with identical hit counts.
 ```
 
 Selectivity barely moves either engine: benzene matches 63% of the corpus and sulfonamide 2.6%, yet
@@ -205,7 +205,7 @@ column is best read from `ssSearch.js`.
 ### `node benchmark/similaritySearch.js`
 
 ```
-openchemlib-wasm vs openchemlib-js 9.25.0 — batch similarity (FragFp, Tanimoto)
+openchemlib-search-wasm vs openchemlib-js 9.25.0 — batch similarity (FragFp, Tanimoto)
 node v24.15.0  darwin arm64  10 cores
 corpus 1,000 idcodes, every 409th of 409,686, mean 38.82 chars
        /Users/lpatiny/git/cheminfo/openchemlib-wasm/dev/public/idcodes.txt
@@ -228,7 +228,7 @@ wasm: idcode → FragFp → Tanimoto            947.13        1,056             
 openchemlib-js: the same                   4738.34          211              32.4 min
 plain JS: Tanimoto on a stored FragFp       0.0316   31,673,126                 13 ms
 
-Building the fingerprint is 29,999x the cost of comparing one, so a caller that already stores fingerprints should never call similaritySearch: 13 ms of plain JS ranks the whole corpus against 6.5 min of WASM. openchemlib-wasm is 5.00x openchemlib-js when idcodes really are all you have.
+Building the fingerprint is 29,999x the cost of comparing one, so a caller that already stores fingerprints should never call similaritySearch: 13 ms of plain JS ranks the whole corpus against 6.5 min of WASM. openchemlib-search-wasm is 5.00x openchemlib-js when idcodes really are all you have.
 ```
 
 **The third row is the useful one.** Ranking the whole 409,686-molecule corpus takes 13 ms of plain
@@ -308,12 +308,12 @@ openchemlib-js        2    8.87        46.2k    1.89x                  8.87 / 8.
 openchemlib-js        4    5.04        81.3k    3.33x                  5.04 / 3.64               23       0.04
 openchemlib-js        8    3.95       103.8k    4.25x                  3.95 / 2.36               32       0.06
 
-Both engines parallelise, so the honest claim is per core: openchemlib-wasm is 1.99x openchemlib-js on 8 workers, the same ratio it has on one. 257,625 of 409,686 molecules matched benzene in 1.98 s.
+Both engines parallelise, so the honest claim is per core: openchemlib-search-wasm is 1.99x openchemlib-js on 8 workers, the same ratio it has on one. 257,625 of 409,686 molecules matched benzene in 1.98 s.
 ```
 
 **The 1.8x is per core, not free parallelism.** Both engines scale the same way — 4.65x on eight
 workers for WASM, 4.25x for openchemlib-js — so eight workers of `openchemlib` land roughly where
-four workers of `openchemlib-wasm` do. Neither reaches 8x because this machine has six performance
+four workers of `openchemlib-search-wasm` do. Neither reaches 8x because this machine has six performance
 cores and four efficiency ones: the `slowest / fastest worker` column shows the spread widening from
 9.21 / 9.21 on one worker to 1.98 / 1.07 on eight, which is the efficiency cores finishing last on
 an even split of the corpus. A scheduler that hands out work in chunks would recover part of that.

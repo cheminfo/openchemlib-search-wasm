@@ -1,5 +1,5 @@
 {
-  "name": "openchemlib-wasm",
+  "name": "openchemlib-search-wasm",
   "version": "0.0.0",
   "type": "module",
   "description": "Batch substructure and similarity search over idcodes, with OpenChemLib compiled to WebAssembly",
@@ -11,6 +11,14 @@
     "openchemlib",
     "webassembly"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cheminfo/openchemlib-search-wasm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cheminfo/openchemlib-search-wasm/issues"
+  },
+  "homepage": "https://github.com/cheminfo/openchemlib-search-wasm#readme",
   "scripts": {
     "benchmark": "node benchmark/ssSearch.js",
     "benchmark-scan": "node benchmark/scan.mjs",

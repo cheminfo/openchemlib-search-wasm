@@ -33,7 +33,7 @@ const { idCodes } = corpus;
 const molecules = idCodes.length;
 
 printHeader(
-  `openchemlib-wasm vs openchemlib-js ${openchemlibVersion()} — batch substructure search`,
+  `openchemlib-search-wasm vs openchemlib-js ${openchemlibVersion()} — batch substructure search`,
   corpus,
 );
 
@@ -66,7 +66,7 @@ for (const query of QUERIES) {
   const jsHits = hits.get(`${query.name} openchemlib-js`);
   if (wasmHits !== jsHits) {
     throw new Error(
-      `${query.name} (${query.idCode}): openchemlib-wasm found ${wasmHits} matches and ` +
+      `${query.name} (${query.idCode}): openchemlib-search-wasm found ${wasmHits} matches and ` +
         `openchemlib-js found ${jsHits} over the same ${molecules} idcodes. The two engines are ` +
         'not doing the same work, so nothing timed below means anything.',
     );
@@ -144,7 +144,7 @@ printTable(
 );
 
 conclude(
-  `openchemlib-wasm is ${(ratioTotal / QUERIES.length).toFixed(2)}x openchemlib-js on one thread, ` +
+  `openchemlib-search-wasm is ${(ratioTotal / QUERIES.length).toFixed(2)}x openchemlib-js on one thread, ` +
     'over six queries with identical hit counts.',
 );
 

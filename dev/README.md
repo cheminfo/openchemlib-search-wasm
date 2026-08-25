@@ -1,6 +1,6 @@
 # dev app
 
-A developer surface for `openchemlib-wasm`: run a batch substructure or similarity search over a
+A developer surface for `openchemlib-search-wasm`: run a batch substructure or similarity search over a
 real 409,686-idcode corpus, in workers, and watch the shared result buffer fill.
 
 ```sh
@@ -57,7 +57,7 @@ actually closes the gap.
   each), so it opens on a 5,000-molecule slice and says why. The hit list uses a fixed 0.80 Tanimoto
   cutoff, shown as the column label — a benzene query has a tiny fingerprint and legitimately clears
   it nowhere, so an empty list there is the answer, not a bug.
-- **engine** — `openchemlib-wasm`, `openchemlib-js`, or **A/B**, which runs both in turn, never at
+- **engine** — `openchemlib-search-wasm`, `openchemlib-js`, or **A/B**, which runs both in turn, never at
   once: two engines sharing the cores would make both timings meaningless.
 - **agreement** — after an A/B run the two result buffers are diffed. A speed number from an engine
   computing a different answer is worthless, so this is the line to read first.

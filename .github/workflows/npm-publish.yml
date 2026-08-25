@@ -32,7 +32,7 @@ jobs:
       - name: Check the tarball ships wasm/ and lib/
         run: |
           npm pack
-          tar -tzf openchemlib-wasm-*.tgz | tee tarball.txt
+          tar -tzf openchemlib-search-wasm-*.tgz | tee tarball.txt
           for entry in package/wasm/data.js package/wasm/runtime.js package/lib/index.js; do
             grep -q "^$entry" tarball.txt || {
               echo "::error::the tarball ships no $entry"

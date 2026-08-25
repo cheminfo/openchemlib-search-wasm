@@ -3,7 +3,7 @@ import { SimilarityResult, SubstructureResult } from './types.ts';
 import { loadOCL } from './wasm/load.ts';
 
 // Top-level await: the WASM module is instantiated when this module is imported, so the searches are
-// plain calls. A worker pays it once, at startup, for about 25 ms.
+// plain calls. A worker pays it once, at startup, for about 25 ms from the built package.
 const { Search } = await loadOCL();
 
 // A malformed idcode makes OpenChemLib's bit-stream parser read past its input, which WebAssembly

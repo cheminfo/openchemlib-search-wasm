@@ -5,7 +5,7 @@ import type { EngineState, RunConfig } from '../runState.ts';
 import { SIMILARITY_HIT_THRESHOLD } from '../runState.ts';
 
 const NAMES: Record<Engine, string> = {
-  wasm: 'openchemlib-wasm',
+  wasm: 'openchemlib-search-wasm',
   gwt: 'openchemlib-js',
 };
 
@@ -132,7 +132,7 @@ function Speedup({ engines }: { engines: EngineState[] }) {
   }
   return (
     <p className="speedup">
-      openchemlib-wasm scanned{' '}
+      openchemlib-search-wasm scanned{' '}
       <strong>{ratio(gwt.elapsedMs / wasm.elapsedMs)}</strong> faster — same
       corpus, same worker count, same split.
     </p>

@@ -1,7 +1,7 @@
 # Contributing
 
-The package is two functions over an OpenChemLib closure compiled to WebAssembly by TeaVM. Almost
-everything below is about keeping that closure cheap to upgrade.
+The package is a handful of search functions over an OpenChemLib closure compiled to WebAssembly by
+TeaVM. Almost everything below is about keeping that closure cheap to upgrade.
 
 ```
 java/pom.xml                          TeaVM WasmGC build; javac pulls OpenChemLib from the submodule
@@ -59,15 +59,16 @@ npm run test-only
 Commit the submodule pointer and the regenerated `wasm/`. That is the entire procedure.
 
 It is that short because **OpenChemLib is neither vendored nor patched**. `java/pom.xml` compiles
-only `org/openchemlib/wasm/*.java`; javac's `-sourcepath` pulls the reachable closure — 238 classes —
-straight out of the submodule working tree, and TeaVM's dead-code elimination compiles that same
+only `org/openchemlib/wasm/*.java`; javac's `-sourcepath` pulls the reachable closure — 44
+OpenChemLib classes, 56 class files with the nested ones — straight out of the submodule working
+tree, and TeaVM's dead-code elimination compiles that same
 closure. There is no copy to regenerate and no diff to review.
 
 The substructure and similarity closure also needs none of the reconciliations the old full-API port
 needed: no `Thread.yield()` stripping, no `getResourceAsStream` rerouting, no `RigidFragmentCache`
 surgery, no `java.awt` repackaging, no bundled parameter tables. Every one of those triggers has zero
 hits across the closure — they live in the force field, the predictors, the conformer generator and
-the depiction code, and the two functions reach none of it. Nothing in the closure reads a classpath
+the depiction code, and the search functions reach none of it. Nothing in the closure reads a classpath
 resource at runtime either, so there is no resource bundle to keep in step.
 
 Two things a bump can break, and how each surfaces:
@@ -95,9 +96,9 @@ issue upstream.
 
 ## What the tests guarantee
 
-The suite runs both functions over real idcodes (`src/__tests__/data/idcodes.txt`, 1999 of them) and
-cross-checks every result against `openchemlib` — the GWT build — computed in the same process. Hit
-counts and similarity values must agree exactly.
+The suite runs every exported function over real idcodes (`src/__tests__/data/idcodes.txt`, 1999 of
+them) and cross-checks every result against `openchemlib` — the GWT build — computed in the same
+process. Hit counts, similarity values and fingerprint words must agree exactly.
 
 That cross-check is what turns an upstream behaviour change into a red test instead of into silently
 different search results. A build failure only catches signature changes, and between two OpenChemLib
@@ -106,10 +107,12 @@ and `AromaticityResolver` among them — with no signature change at all. Those 
 out to change nothing (identical digests over 20,000 idcodes), which is exactly what the tests are
 there to establish.
 
-The highest-value assertion is on `SSSearcherWithIndex.cKeyIDCode`, the 512 substructure keys. They
-define every similarity value this package returns and every `ss_index` column already stored in
-consumer databases; if they ever change, every stored index everywhere is invalid. Assert malformed
-input explicitly too — its behaviour is a consequence of a build flag, not an accident.
+The highest-value assertion is `getIndexes.test.ts`'s "every word matches openchemlib-js
+createIndex", which compares all sixteen words of the 512-bit FragFp against `openchemlib-js` over
+250 idcodes. Those words are the 512 substructure keys applied: they define every similarity value
+this package returns and every `ss_index` column already stored in consumer databases, so if the key
+set ever changes, every stored index everywhere is invalid. Assert malformed input explicitly too —
+its behaviour is a consequence of a build flag, not an accident.
 
 ## TeaVM interop worth knowing
 
@@ -124,7 +127,7 @@ input explicitly too — its behaviour is a consequence of a build flag, not an 
   `Float32Array`, `byte[]` → `Int8Array`, `String[]` → `string[]`.
 - A `byte[]` **parameter** is marshalled by copy, inbound only: Java writes it and the caller's
   buffer never changes — `SharedArrayBuffer` included. The result buffers are therefore declared as
-  `org.teavm.jso.typedarrays.Uint8Array` / `Float32Array`, live JS handles written with
+  `org.teavm.jso.typedarrays.Uint8Array` / `Float32Array` / `Int32Array`, live JS handles written with
   `result.set(i, v)`; that is what `teavm-jso-apis` is for. TeaVM 0.14.1 has no `Float16Array`, which
   is why similarity results are 32-bit.
 - TeaVM has a real `float`; GWT emulates `float` as `double`. A float-returning method yields e.g.

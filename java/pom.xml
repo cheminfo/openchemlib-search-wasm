@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.openchemlib</groupId>
-  <artifactId>openchemlib-wasm-java</artifactId>
+  <artifactId>openchemlib-search-wasm-java</artifactId>
   <version>0.0.0</version>
   <packaging>jar</packaging>
 

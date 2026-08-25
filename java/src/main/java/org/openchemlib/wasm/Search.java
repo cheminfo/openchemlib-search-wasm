@@ -12,12 +12,12 @@ import org.teavm.jso.typedarrays.Int32Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 
 /**
- * The whole public surface of openchemlib-wasm: batch substructure search and batch similarity
- * search over a range of an array of idcodes.
+ * The whole public surface of openchemlib-search-wasm: batch substructure search, batch similarity
+ * search and batch FragFp fingerprinting over a range of an array of idcodes.
  *
- * <p>Both write into a caller-owned JS typed array one entry at a time, so a caller that backs it
- * with a {@code SharedArrayBuffer} and splits the idcodes across workers can render progress while
- * the scan runs. Each index is written by exactly one worker, so no atomics are needed.
+ * <p>All three write into a caller-owned JS typed array as they go, so a caller that backs it with a
+ * {@code SharedArrayBuffer} and splits the idcodes across workers can render progress while the scan
+ * runs. Each index is written by exactly one worker, so no atomics are needed.
  *
  * <p>The idcodes arrive as a {@link JSArrayReader}, read one element at a time, rather than as a
  * {@code String[]}, which TeaVM converts whole before the method body starts. Reading lazily costs

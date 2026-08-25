@@ -3,7 +3,7 @@
 `java/pom.xml` puts this directory on javac's `-sourcepath` **before** the `openchemlib` submodule:
 
 ```
--sourcepath java/src/main/java:java/overlay:../openchemlib/src/main/java
+-sourcepath java/src/main/java:java/overlay:openchemlib/src/main/java
 ```
 
 javac resolves a class from the first entry that provides it, so a file placed here under its real

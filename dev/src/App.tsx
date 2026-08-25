@@ -174,7 +174,7 @@ export function App() {
 function Shell({ children }: { children: ReactNode }) {
   return (
     <main>
-      <h1>openchemlib-wasm</h1>
+      <h1>openchemlib-search-wasm</h1>
       {children}
     </main>
   );
