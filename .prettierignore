@@ -1,0 +1,9 @@
+CHANGELOG.md
+coverage
+dev/dist
+/lib
+wasm
+java/target
+openchemlib
+dev/public
+src/__tests__/data

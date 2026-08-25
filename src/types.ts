@@ -1,171 +1,133 @@
-// Public types for the openchemlib-wasm API. These mirror the openchemlib-js
-// surface; arrays are returned as typed arrays (an optimization-justified
-// difference from the JS build, which uses plain arrays).
+/**
+ * The status of one entry of an `ssSearch` result buffer.
+ *
+ * A caller that splits the work across workers backs the buffer with a `SharedArrayBuffer` and
+ * reads it while the scan runs: every entry still holding `unprocessed` is one the workers have not
+ * reached yet.
+ */
+export const SubstructureResult = Object.freeze({
+  /** Not tested yet. */
+  unprocessed: 0,
+  /** The query is a substructure of this molecule. */
+  match: 1,
+  /** The query is not a substructure of this molecule. */
+  noMatch: 2,
+  /** The idcode could not be parsed; nothing was tested. */
+  unparsable: 3,
+});
 
-/** Options for SMILES parsing. */
-export interface SmilesOptions {
-  /** @default 'smiles' */
-  smartsMode?: 'smiles' | 'smarts' | 'guess';
-  /** @default false */
-  skipCoordinateTemplates?: boolean;
-  /** @default false */
-  makeHydrogenExplicit?: boolean;
-  /** @default false */
-  noCactvs?: boolean;
-  /** @default false */
-  singleDotSeparator?: boolean;
-  /** @default false */
-  createSmartsWarnings?: boolean;
-  /** @default false */
-  noCoordinates?: boolean;
-  /** @default false */
-  noStereo?: boolean;
+/**
+ * The similarity of one entry of a `similaritySearch` result buffer: `NaN` while the entry
+ * has not been compared yet, `-1` when its idcode could not be parsed, otherwise the Tanimoto
+ * coefficient in [0, 1]. `0` is a legitimate similarity, which is why the "not yet" sentinel is
+ * `NaN` and not `0`.
+ */
+export const SimilarityResult = Object.freeze({
+  /** Not compared yet. */
+  unprocessed: Number.NaN,
+  /** The idcode could not be parsed; nothing was compared. */
+  unparsable: -1,
+});
+
+/** A caller-owned result buffer: bytes for a substructure scan, floats for a similarity one. */
+export type ResultBuffer = Uint8Array | Float32Array;
+
+/**
+ * Which search `search` runs. The names are the ones `openchemlib-utils` and
+ * `openchemlib-sqlite` already use for the same two searches.
+ */
+export type SearchMode = 'substructure' | 'similarity';
+
+/** What landed since the previous step. */
+export interface SearchStep {
+  /** First index written since the previous step. */
+  from: number;
+  /** One past the last index written since the previous step. */
+  to: number;
+  /** How many entries have been written in total. */
+  processed: number;
+  /** How many entries there are. */
+  total: number;
+  /**
+   * Running count of matches: entries equal to {@link SubstructureResult.match} in `substructure`
+   * mode, entries at or above `threshold` in `similarity` mode.
+   */
+  matched: number;
+  /** Milliseconds since the search started. */
+  elapsed: number;
 }
 
-/** Match-mode options for substructure search. */
-export interface MatchOptions {
-  /** @default false */
-  matchAtomCharge?: boolean;
-  /** @default false */
-  matchAtomMass?: boolean;
-  /** @default false */
-  matchDBondToDelocalized?: boolean;
-  /** @default true */
-  matchAromDBondToDelocalized?: boolean;
+/** How a search ended. */
+export interface SearchSummary {
+  /** How many entries were written. Short of `total` when the search stopped early. */
+  processed: number;
+  /** How many of them matched. */
+  matched: number;
+  /** How many idcodes could not be parsed. */
+  unparsable: number;
+  /** How many entries there were. */
+  total: number;
+  /** How long the search took, in milliseconds. */
+  elapsed: number;
+  /** True when `onStep` returned false before the end. */
+  stopped: boolean;
 }
 
-/** Count-mode options for findFragmentInMolecule. */
-export interface CountOptions {
-  /** @default 'overlapping' */
-  countMode?:
-    | 'overlapping'
-    | 'existence'
-    | 'firstMatch'
-    | 'separated'
-    | 'rigorous'
-    | 'unique';
+export interface SearchOptions {
+  /**
+   * Which search to run.
+   * @default 'substructure'
+   */
+  mode?: SearchMode;
+  /**
+   * Milliseconds of scanning between `onStep` calls. The chunk size adapts to hit it, so the same
+   * value works for a substructure scan (~22 µs per molecule) and a similarity one (~947 µs).
+   * @default 100
+   */
+  interval?: number;
+  /**
+   * Called every `interval` milliseconds with what has landed since the last call, and once more
+   * when the scan ends. Return `false` to stop the search.
+   */
+  onStep?: (step: SearchStep) => boolean | void;
+  /** Aborting it rejects the returned promise with an `AbortError`. */
+  controller?: AbortController;
+  /**
+   * In `similarity` mode, the Tanimoto coefficient at or above which an entry counts as a match.
+   * Ignored in `substructure` mode.
+   * @default 0.8
+   */
+  threshold?: number;
 }
 
-export interface Molecule {
-  getIDCode(): string;
-  getIDCoordinates(): string;
-  toIsomericSmiles(): string;
-  toMolfile(): string;
-  isFragment(): boolean;
-  setFragment(isFragment: boolean): void;
-  getAllAtoms(): number;
-  getAllBonds(): number;
-  getAtomX(atom: number): number;
-  getAtomY(atom: number): number;
+/** The shape TeaVM exports from the WasmGC module. Both take a half-open `[from, to)` range. */
+export interface OCLSearch {
+  Search: {
+    /** Returns how many molecules in the range contain the fragment. */
+    ssSearch: (
+      idCodeQuery: string,
+      idCodes: string[],
+      result: Uint8Array,
+      from: number,
+      to: number,
+    ) => number;
+    /** Returns how many molecules in the range were parsed and compared. */
+    similaritySearch: (
+      idCodeQuery: string,
+      idCodes: string[],
+      result: Float32Array,
+      from: number,
+      to: number,
+    ) => number;
+    /** Returns how many molecules in the range were parsed and fingerprinted. */
+    getIndexes: (
+      idCodes: string[],
+      result: Int32Array,
+      from: number,
+      to: number,
+    ) => number;
+  };
 }
 
-export interface MoleculeConstructor {
-  new (maxAtoms: number, maxBonds: number): Molecule;
-  fromSmiles(smiles: string, options?: SmilesOptions): Molecule;
-  fromIDCode(idCode: string): Molecule;
-}
-
-export interface SmilesParser {
-  parseMolecule(smiles: string, options?: SmilesOptions): Molecule;
-  getSmartsWarning(): string;
-}
-
-export interface SmilesParserConstructor {
-  new (options?: SmilesOptions): SmilesParser;
-}
-
-export interface SSSearcher {
-  setMolecule(molecule: Molecule): void;
-  setFragment(fragment: Molecule): void;
-  setMol(fragment: Molecule, molecule: Molecule): void;
-  isFragmentInMolecule(): boolean;
-  findFragmentInMolecule(options?: CountOptions): number;
-  getMatchList(): Int32Array[];
-}
-
-export interface SSSearcherConstructor {
-  new (options?: MatchOptions): SSSearcher;
-}
-
-export interface SSSearcherWithIndex {
-  createIndex(molecule: Molecule): Int32Array;
-  setFragment(fragment: Molecule, index: Int32Array): void;
-  setMolecule(molecule: Molecule, index: Int32Array): void;
-  isFragmentInMolecule(): boolean;
-}
-
-export interface SSSearcherWithIndexConstructor {
-  new (): SSSearcherWithIndex;
-  getKeyIDCode(): string[];
-  getSimilarityTanimoto(index1: Int32Array, index2: Int32Array): number;
-  getSimilarityAngleCosine(index1: Int32Array, index2: Int32Array): number;
-  getIndexFromHexString(hex: string): Int32Array;
-  getHexStringFromIndex(index: Int32Array): string;
-  bitCount(value: number): number;
-}
-
-/** Options for conformer enumeration initialization. */
-export interface ConformerInitOptions {
-  /** @default 3 */
-  strategy?: number;
-  /** @default 100000 */
-  maxTorsionSets?: number;
-  /** @default false */
-  use60degreeSteps?: boolean;
-}
-
-export interface ForceFieldMMFF94 {
-  size(): number;
-  getTotalEnergy(): number;
-  minimise(maxIts: number, gradTol: number, funcTol: number): number;
-}
-
-export interface ForceFieldMMFF94Constructor {
-  new (
-    molecule: Molecule,
-    tablename: 'MMFF94' | 'MMFF94s' | 'MMFF94s+',
-  ): ForceFieldMMFF94;
-}
-
-export interface ConformerGenerator {
-  getOneConformerAsMolecule(molecule: Molecule): Molecule | null;
-  initializeConformers(
-    molecule: Molecule,
-    options?: ConformerInitOptions,
-  ): boolean;
-  getNextConformerAsMolecule(molecule: Molecule | null): Molecule | null;
-  getConformerCount(): number;
-  getPotentialConformerCount(): number;
-}
-
-export interface ConformerGeneratorConstructor {
-  new (seed: number): ConformerGenerator;
-}
-
-export interface DruglikenessPredictor {
-  assessDruglikeness(molecule: Molecule): number;
-  getDruglikenessString(molecule: Molecule): string;
-}
-
-export interface DruglikenessPredictorConstructor {
-  new (): DruglikenessPredictor;
-}
-
-export interface ToxicityPredictor {
-  assessRisk(molecule: Molecule, riskType: number): number;
-}
-
-export interface ToxicityPredictorConstructor {
-  new (): ToxicityPredictor;
-}
-
-export interface OCL {
-  Molecule: MoleculeConstructor;
-  SmilesParser: SmilesParserConstructor;
-  SSSearcher: SSSearcherConstructor;
-  SSSearcherWithIndex: SSSearcherWithIndexConstructor;
-  ForceFieldMMFF94: ForceFieldMMFF94Constructor;
-  ConformerGenerator: ConformerGeneratorConstructor;
-  DruglikenessPredictor: DruglikenessPredictorConstructor;
-  ToxicityPredictor: ToxicityPredictorConstructor;
-}
+/** How many 32-bit words one molecule's FragFp fingerprint occupies. */
+export const INDEX_WORDS = 16;

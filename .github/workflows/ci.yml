@@ -8,37 +8,74 @@ on:
     branches:
       - main
 
-# Custom workflow (not the shared zakodium nodejs.yml) because the test suite
-# builds the WasmGC module from Java, which needs a JDK 21 + Maven toolchain the
-# shared Node workflow does not provide. The OpenChemLib sources are vendored
-# under java/, so the `openchemlib` submodule is NOT needed to build.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# Two jobs, because the WebAssembly module is committed under wasm/ (as
+# cheminfo/inchi-js commits its own): `test` needs nothing but Node, and `wasm`
+# proves the committed module is what the Java sources produce.
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      # test-only + check-types + eslint + prettier, all blocking.
+      - run: npm run test
+
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # OpenChemLib is not vendored: javac pulls the reachable closure from the
+          # `openchemlib` submodule through -sourcepath. Without it the build dies
+          # with "cannot find symbol: class StereoMolecule".
+          submodules: true
+      - name: Check the OpenChemLib submodule is populated
+        run: |
+          test -d openchemlib/src/main/java || {
+            echo "::error::openchemlib/ is empty — actions/checkout needs submodules: true"
+            exit 1
+          }
+      # The module is meant to compile from pristine OpenChemLib, so every file here
+      # is one to re-reconcile at the next submodule bump. See java/overlay/README.md.
+      - name: Report java/overlay patches
+        run: |
+          # git stores no empty directory, so java/overlay may not exist in a fresh
+          # checkout at all; an empty overlay is the healthy case, not a failure.
+          patches=$(find java/overlay -name '*.java' 2>/dev/null || true)
+          if [ -n "$patches" ]; then
+            echo "$patches"
+            echo "::warning title=java/overlay is not empty::the module no longer builds from pristine OpenChemLib"
+          fi
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: npm
       - run: npm ci
-      # Required: build the WasmGC module (TeaVM compile + embed) and run the
-      # runtime test suite + formatting check. These must stay green.
       - run: npm run build
-      - run: npm run test-only
-      - run: npm run prettier
-      # Non-blocking: type-check and lint still report errors from the
-      # in-progress API port (the wasm exposes methods that src/types.ts does
-      # not yet declare). Keep them visible but do not fail CI until the type
-      # surface is complete, then drop `continue-on-error`.
-      - run: npm run check-types
-        continue-on-error: true
-      - run: npm run eslint
-        continue-on-error: true
+      # The TeaVM build is byte-reproducible, so a difference here means wasm/ was
+      # not regenerated after the Java sources or the submodule pin changed.
+      - name: The committed module matches the sources
+        run: |
+          git diff --exit-code -- wasm || {
+            echo "::error::wasm/ is stale — run npm run build and commit the result"
+            exit 1
+          }

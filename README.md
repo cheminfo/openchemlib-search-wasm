@@ -1,133 +1,330 @@
-# openchemlib-wasm (proof of concept)
+# openchemlib-wasm
 
-Compile OpenChemLib (Java) to **WebAssembly** instead of JavaScript, to make
-substructure search (and the rest of the API) faster, and to get real `long`
-(`i64`) arithmetic that GWT can only emulate slowly.
+Two functions — batch substructure search and batch similarity search over arrays of OpenChemLib
+idcodes — with OpenChemLib compiled to WebAssembly.
 
-> Status: **feasibility proven.** This repo currently contains two throwaway
-> spikes that de-risk the approach end to end. It is **not yet** the published
-> package — that is the next phase (see _Next steps_).
-
-## What has been proven
-
-**Toolchain** — [TeaVM](https://teavm.org) 0.14.1 WebAssembly **GC** backend is
-the right tool: it is the only actively-maintained AOT Java→WASM compiler that is
-isomorphic (Node + browser), emits a single embeddable `.wasm`, keeps a
-**synchronous** API, and maps Java `long` → native WASM `i64`. (CheerpJ was
-rejected: browser-only, async-only, multi-file CDN runtime, commercial.)
-
-1. **`spike/`** — Stage 0. A trivial `long[]` bit-op class compiles to WasmGC,
-   `@JSExport`s, loads from in-memory bytes in Node (no fetch/fs), round-trips
-   `long`↔`BigInt`, and ships embedded as **gzip+base64** decoded with only
-   `atob` + `DecompressionStream` (the `cheminfo/inchi-js` distribution pattern).
-   Native i64 ran ~45× faster than a JS `BigInt` loop.
-
-2. **`slice/`** — Stage 2. The **real, unmodified** vendored OpenChemLib source
-   compiles to WasmGC and runs the full substructure pipeline
-   (`SmilesParser` → `StereoMolecule` → `Canonizer` → `SSSearcherWithIndex`
-   `long[]` fingerprint screen → `SSSearcher` isomorphism). Outputs are
-   **byte-identical to the GWT build** (idcodes and hit counts match exactly).
-
-## Benchmark (substructure search, with & without preindex)
-
-3000 molecules sampled from `openchemlib-js/data/10k.sdf`, 6 queries. Full table
-in [`slice/BENCHMARK.md`](slice/BENCHMARK.md). Summary:
-
-Tuned build (`optimizationLevel=FULL`, `strict=false`, `assertionsRemoved=true`):
-
-| | WASM vs GWT | Native Java vs GWT |
-|---|--:|--:|
-| Build (parse + index) | **5.6× faster** | 8.1× faster |
-| Search, no index | **3.0–5.2× faster** | ~6–8× faster |
-| Search, with index | **4.4–6.5× faster** | ~8–10× faster |
-
-So WASM lands **between** native Java (the ceiling) and today's GWT-JS — a
-**~3–6.5×** substructure speedup over the current build, with identical results.
-The index always helps; WASM widens the gap because its `long[]` screen runs on
-native i64.
-
-> Tuning matters: the default TeaVM build (`SIMPLE`, `strict=true`) was only
-> ~2–4.6×. Disabling WasmGC's `strict` null/array-bounds checks closed most of the
-> gap to native Java — at the cost of those safety checks, a normal release-build
-> trade-off.
-
-## Run it
+## Install
 
 ```sh
-export JAVA_HOME=$(/usr/libexec/java_home -v 21)   # TeaVM build needs JDK 11+
-
-# Stage 0 toolchain spike
-mvn -B -f spike/pom.xml process-classes
-node spike/node/test.mjs
-node spike/build/embed-wasm.mjs && node spike/node/test-embedded.mjs
-
-# Stage 2 real-OCL slice + benchmark
-mvn -B -f slice/pom.xml process-classes
-node slice/node/test.mjs          # correctness + idcode cross-check vs GWT
-# (compile the JVM baseline once, then run the unified benchmark)
-"$JAVA_HOME/bin/javac" -cp ~/.m2/repository/org/teavm/teavm-jso/0.14.1/teavm-jso-0.14.1.jar \
-  -sourcepath slice/src/main/java -d slice/target/jvm-classes \
-  slice/src/main/java/org/openchemlib/wasm/slice/JavaBench.java \
-  slice/src/main/java/org/openchemlib/wasm/slice/SubstructureSlice.java
-node slice/node/benchmark.mjs
+npm install openchemlib-wasm
 ```
 
-## Key build gotcha
+## Use
 
-`teavm-classlib` declares `teavm-core` at `runtime` scope, but the maven plugin
-analyzes only the **compile** classpath, so the WasmGC build fails with
-`"fiberClass" is null`. **Fix:** declare `org.teavm:teavm-core` explicitly.
+```ts
+// blocking, whole array
+ssSearch(idCodeQuery: string, idCodes: string[], result: Uint8Array): void;
+similaritySearch(idCodeQuery: string, idCodes: string[], result: Float32Array): void;
 
-The vendored OCL subset also contains conformer/docking/editor/flexophore files
-that reference excluded packages (`org.openmolecules`, `org.cheminfo.utils`,
-`smile.*`, Swing). They are off the substructure path, so the slice compiles
-**only the entry point** and lets javac pull the transitive closure on demand via
-`-sourcepath` (and TeaVM whole-program DCE compiles that same closure).
+// reports as it goes, yields to the event loop, stops when you say so
+search(idCodeQuery: string, idCodes: string[], result: ResultBuffer,
+       options?: SearchOptions): Promise<SearchSummary>;
 
-## Caveats (honest)
+// the 512-bit FragFp of every idcode, for a fingerprint table
+getIndexes(idCodes: string[], result?: Int32Array): Int32Array;
+```
 
-- Benchmark methodology is directional: native Java is JIT-warmed best-of-5;
-  WASM/GWT are best-of-3 in V8. GWT parsed 2999 of 3000 (one macrocycle differs);
-  it matches none of the queries so hit counts still agree.
-- WASM does **not** reach native-Java speed (WasmGC overhead + array bounds
-  checks). The win is over GWT, not over the JVM.
-- Only the substructure path is proven. The full public API (depiction `toSVG`,
-  force field, conformers, predictors, reactions) and the ~2,900-line JS wrapper
-  rewrite to `@JSExport`/JSO interop are the real remaining work.
+`result` is your buffer. Both functions reset it, then write one entry per idcode, in order, as the
+scan advances. It must be exactly as long as `idCodes`.
 
-## Could another toolchain be faster?
+```js
+import {
+  similaritySearch,
+  ssSearch,
+  SubstructureResult,
+} from 'openchemlib-wasm';
 
-Two axes, with evidence:
+const benzene = 'gFp@DiTt@@B';
+// benzene, formic acid, naphthalene
+const idCodes = ['gFp@DiTt@@B', 'eMDARVB', 'det@@DjYUX^d@@@@B'];
 
-1. **Tune TeaVM itself (done).** `strict=false` (drop WasmGC bounds checks) +
-   `FULL` opt + `assertionsRemoved` gave a measured ~1.4–1.6× over the default
-   build and is most of the practical headroom. `AGGRESSIVE` is not a valid Maven
-   enum value, and per TeaVM it "does not give significant performance growth".
+const hits = new Uint8Array(idCodes.length);
+ssSearch(benzene, idCodes, hits);
+// Uint8Array [1, 2, 1] — match, no match, match
 
-2. **A hand-written linear-memory WASM kernel** (Rust→wasm-pack or C→Emscripten)
-   for the substructure inner loop only. Linear memory has **no GC and no managed
-   bounds checks**, so it can approach or match native Java on the hot path — but
-   it abandons API parity and is a full reimplementation. Worth it only as a
-   targeted hybrid for the screen+match loop, not for the whole library.
+const similarity = new Float32Array(idCodes.length);
+similaritySearch(benzene, idCodes, similarity);
+// Float32Array [1, 0.125, 0.75]
 
-Toolchains that are **not** faster here:
+for (let i = 0; i < idCodes.length; i++) {
+  if (hits[i] === SubstructureResult.match) console.log(idCodes[i]);
+}
+```
 
-- **CheerpJ** — JIT-to-JS, browser-only, async-only; wrong shape and no native i64
-  guarantee.
-- **GraalVM Web Image** — Graal's optimizer is more advanced and *could* eventually
-  beat TeaVM, but in 2026 it is experimental, server-focused, produces much larger
-  binaries and has nascent browser support. A "watch later", not a faster-now.
-- **J2CL / GWT** — emit JavaScript, so they inherit the slow `long` emulation that
-  motivated this work; they cannot win the i64 path.
+The query is searched as a fragment whatever its own fragment flag says. Similarity is the Tanimoto
+coefficient on OpenChemLib's 512-bit FragFp.
 
-Bottom line: tuned **TeaVM WasmGC is at the practical ceiling for "compile all of
-OCL"**; the only thing meaningfully faster is a Rust/C hot-path kernel that trades
-whole-library parity for raw speed on substructure alone.
+## Result codes
 
-## Next steps
+`ssSearch` writes `SubstructureResult`:
 
-The full plan (toolchain, API tiers, resource bundling, depiction shims,
-`.d.ts` sync, staged execution) is in the design report produced for this repo.
-The immediate next milestone is breadth: re-author the public API wrappers and
-prove the resource-loading tier (force field / predictors). `CanvasEditor` and
-all GUI stay on GWT and are out of scope.
+| Name          | Value | Meaning                                      |
+| ------------- | ----: | -------------------------------------------- |
+| `unprocessed` |     0 | not tested yet                               |
+| `match`       |     1 | the query is a substructure of this molecule |
+| `noMatch`     |     2 | it is not                                    |
+| `unparsable`  |     3 | this idcode could not be parsed              |
+
+`similaritySearch` writes a float, with two sentinels in `SimilarityResult`:
+
+| Name          |  Value | Meaning                         |
+| ------------- | -----: | ------------------------------- |
+| `unprocessed` |  `NaN` | not compared yet                |
+| `unparsable`  |     -1 | this idcode could not be parsed |
+| —             | 0 to 1 | the Tanimoto coefficient        |
+
+`0` is a legitimate similarity, which is why "not yet" is `NaN` and not `0`.
+
+**Why `Float32Array` and not `Float16Array`.** Writing one result costs 0.1227 µs per molecule —
+0.013% of the 947 µs a similarity entry costs to compute — so the element type cannot make the scan
+measurably faster either way. Half floats would only halve the buffer (1.6 MB instead of 3.2 MB for
+400,000 molecules) and would cost precision: a 10-bit mantissa resolves a coefficient in [0, 1] to
+about 0.001, and every value would stop matching openchemlib-js bit for bit, which is what the tests
+assert. TeaVM 0.14.1 also ships no `Float16Array` binding, so it would mean hand-encoding halves into
+a `Uint16Array`. Float32 is the cheaper answer on every axis that matters here.
+
+A query idcode that cannot be parsed throws. A malformed idcode in `idCodes` is recorded as
+`unparsable` and the scan continues; past 100 of them the input is not a list of idcodes and the
+call throws, naming the query.
+
+## Split it across workers
+
+The caller owns the buffer so that several workers can fill one array while the main thread reads
+it. Back it with a `SharedArrayBuffer`, give each worker its own slice of `idCodes` and
+`result.subarray(from, to)`, and read progress on the main thread. Each index is written by exactly
+one worker, so plain reads and writes are enough — no atomics.
+
+```js
+// main.js
+import { Worker } from 'node:worker_threads';
+import { SubstructureResult } from 'openchemlib-wasm';
+
+const idCodes = await loadYourIdCodes(); // string[]
+const workerCount = 8;
+const result = new Uint8Array(new SharedArrayBuffer(idCodes.length));
+const size = Math.ceil(idCodes.length / workerCount);
+
+const running = [];
+for (let from = 0; from < idCodes.length; from += size) {
+  const to = Math.min(from + size, idCodes.length);
+  const worker = new Worker(new URL('./worker.js', import.meta.url));
+  worker.postMessage({
+    idCodeQuery: 'gFp@DiTt@@B',
+    idCodes: idCodes.slice(from, to),
+    result: result.subarray(from, to),
+  });
+  running.push(
+    new Promise((resolve) =>
+      worker.on('message', () => resolve(worker.terminate())),
+    ),
+  );
+}
+
+const timer = setInterval(() => {
+  let done = 0;
+  for (let i = 0; i < result.length; i++) {
+    if (result[i] !== SubstructureResult.unprocessed) done++;
+  }
+  render(done / result.length);
+}, 100);
+
+await Promise.all(running);
+clearInterval(timer);
+```
+
+```js
+// worker.js
+import { parentPort } from 'node:worker_threads';
+import { ssSearch } from 'openchemlib-wasm';
+
+parentPort.on('message', ({ idCodeQuery, idCodes, result }) => {
+  ssSearch(idCodeQuery, idCodes, result);
+  parentPort.postMessage('done');
+});
+```
+
+A worker blocks its own thread for the whole call, which is the point: the main thread stays free to
+render. In the browser the shape is identical with `Worker` and `postMessage`, but the page must be
+cross-origin isolated for `SharedArrayBuffer` to exist — serve it with
+`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. Node
+`worker_threads` needs nothing.
+
+## Search with a callback
+
+`search` runs the same scan in chunks, hands each chunk to `onStep`, and yields to the event loop
+between them, so a whole-corpus scan can run without freezing the page. Returning `false` stops it.
+The vocabulary is the one `openchemlib-utils` and `openchemlib-sqlite` already use: `mode`,
+`'substructure'` / `'similarity'`, `interval`, and an `AbortController`.
+
+```js
+import { search, SubstructureResult } from 'openchemlib-wasm';
+
+const result = new Uint8Array(idCodes.length);
+const hits = [];
+
+const summary = await search(benzene, idCodes, result, {
+  mode: 'substructure', // or 'similarity', with a Float32Array
+  interval: 100, // ms of scanning between onStep calls
+  onStep({ from, to, matched, processed, total }) {
+    for (let i = from; i < to; i++) {
+      if (result[i] === SubstructureResult.match) hits.push(i);
+    }
+    render(processed / total);
+    return hits.length < 100; // false stops the search
+  },
+});
+// { processed, matched, unparsable, total, elapsed, stopped }
+```
+
+| option       | default          |                                                                         |
+| ------------ | ---------------- | ----------------------------------------------------------------------- |
+| `mode`       | `'substructure'` | `'substructure'` writes a `Uint8Array`, `'similarity'` a `Float32Array` |
+| `interval`   | `100`            | ms of scanning between `onStep` calls; the chunk size adapts to hit it  |
+| `onStep`     | —                | return `false` to stop                                                  |
+| `controller` | —                | an `AbortController`; aborting rejects with an `AbortError`             |
+| `threshold`  | `0.8`            | in `similarity` mode, what counts as a match in `step.matched`          |
+
+**Stopping early is where this pays.** Over the whole 409,686-idcode corpus, with benzene:
+
+|                                | scanned |       time |
+| ------------------------------ | ------: | ---------: |
+| whole corpus                   | 409,686 |      8.8 s |
+| stop at the first 100 matches  |     673 | **6.3 ms** |
+| stop at the first 1000 matches |   1,799 |    20.3 ms |
+
+Chunking costs nothing — 800 chunked calls measure the same as one call over the whole corpus,
+because the idcodes are read out of your array one at a time rather than converted up front. At the
+default `interval` the steps land at a 76 ms median and 102 ms p90; the tail is molecule-size
+variance, not mis-sizing, and a caller wanting smoother frames sets `interval: 16`.
+
+## Build a fingerprint table
+
+`getIndexes` returns the 512-bit FragFp of every idcode, sixteen 32-bit words each, in the same word
+order `openchemlib-js`'s `createIndex` produces — verified bit for bit. A `BigInt64Array` view over
+it is exactly the eight columns `openchemlib-sqlite` stores, so there is no conversion and no copy:
+
+```js
+import { getIndexes } from 'openchemlib-wasm';
+
+const indexes = getIndexes(idCodes);
+for (let i = 0; i < idCodes.length; i++) {
+  const columns = new BigInt64Array(indexes.buffer, i * 64, 8); // ss_index0..7
+  insert.run(entryId[i], ...columns);
+}
+```
+
+Building a fingerprint is about forty times a substructure test, so this is the expensive part of
+importing a library — and where the biggest speedup is:
+
+|                                 | per molecule | 409,686 molecules |
+| ------------------------------- | -----------: | ----------------: |
+| `openchemlib-js` `createIndex`  |      4484 µs |          30.6 min |
+| `openchemlib-wasm` `getIndexes` |       897 µs |       **6.1 min** |
+|                                 |              |          **5.0x** |
+
+OpenChemLib parses the 512 key fragments once and holds them statically, so a batch pays for them on
+its first molecule and never again. An idcode that will not parse gets sixteen zeros, which no
+non-empty query is a subset of, so it can never become a false candidate.
+
+## Using it from openchemlib-sqlite
+
+Its SQL prefilter — `(s.ss_indexN & ?) = ?` over all eight chunks — _is_ the complete 512-bit
+screen, so the candidates it returns are exactly the molecules that reach the isomorphism. Replacing
+the per-candidate `Molecule.fromIDCode` + `isFragmentInMolecule` loop with one `search` call over
+the candidate idcodes is measured, on candidate sets produced by that very prefilter over 50,000
+molecules:
+
+| query       | candidates |   today | with `search` |       |
+| ----------- | ---------: | ------: | ------------: | ----: |
+| benzene     |     33,717 | 1746 ms |        860 ms | 2.03x |
+| pyridine    |      5,510 |  295 ms |        137 ms | 2.15x |
+| carboxyl    |     14,792 |  685 ms |        340 ms | 2.01x |
+| anilide     |      4,507 |  276 ms |        129 ms | 2.13x |
+| sulfonamide |      2,958 |  177 ms |         87 ms | 2.02x |
+| naphthalene |     19,278 | 1104 ms |        537 ms | 2.05x |
+
+**2.05x on the candidate loop**, with identical hit counts. Its `maxResults` and `timeoutMs` become
+the `onStep` return value, and `controller` replaces the deadline check. Note that its loop already
+stops at `maxResults`, so for a first page of 100 the two are level — the 2x is on the work, not on
+the early exit.
+
+The bigger win for that project is `getIndexes`: building `ocl_ss_index` for 400,000 molecules drops
+from about half an hour to six minutes, and to roughly a minute and a half across eight workers.
+
+## What you actually win
+
+Against `openchemlib` 9.25.0 (the GWT build), on 409,686 real idcodes, Apple Silicon, node 24. Every
+row is produced by a file in `benchmark/`; [benchmark/README.md](benchmark/README.md) carries the
+output and the method.
+
+|                                           |       openchemlib-wasm | openchemlib |            ratio |
+| ----------------------------------------- | ---------------------: | ----------: | ---------------: |
+| substructure, per molecule (six queries)  |                23.9 µs |     43.7 µs |         **1.8x** |
+| substructure, whole corpus, one thread    |                 9.22 s |     16.78 s |         **1.8x** |
+| substructure, whole corpus, eight workers |                 1.98 s |      3.95 s |         **2.0x** |
+| similarity, per molecule                  |                 947 µs |     4738 µs |         **5.0x** |
+| similarity, whole corpus, one thread      |                6.5 min |    32.4 min |         **5.0x** |
+| gzipped payload                           | 119 KB + 16 KB runtime |      336 KB | **2.4x smaller** |
+| engine import, per worker                 |               51–91 ms |    22–32 ms |                  |
+
+**The answers are identical.** The same hit counts for six queries across all 409,686 molecules
+(benzene 257,625, pyridine 30,879, sulfonamide 10,826, naphthalene 16,882, plus carboxyl and
+anilide), and similarity values that match bit for bit (max difference 0).
+
+**Why substructure is only 1.8x.** Half the work is parsing the idcode, and that part is only 1.7x
+faster; the isomorphism is 2.0x:
+
+| Step               | openchemlib-wasm | openchemlib | ratio |
+| ------------------ | ---------------: | ----------: | ----: |
+| parse the idcode   |          11.8 µs |     20.5 µs |  1.7x |
+| match the fragment |          11.2 µs |     22.5 µs |  2.0x |
+| total              |          23.0 µs |     43.0 µs |  1.9x |
+
+Benchmarks that search molecules already parsed in memory report 3–6x. That is not the shape of this
+API: it is given idcodes and pays the parse on every one of them.
+
+**The 1.8x is per core, not per worker.** Both engines parallelise the same way, so eight workers of
+`openchemlib` land roughly where four workers of `openchemlib-wasm` do:
+
+| Workers | openchemlib-wasm | Molecules/s | openchemlib | Molecules/s |
+| ------: | ---------------: | ----------: | ----------: | ----------: |
+|       1 |           9.22 s |      44,400 |     16.78 s |      24,400 |
+|       2 |           4.74 s |      86,400 |      8.87 s |      46,200 |
+|       4 |           2.83 s |     144,600 |      5.04 s |      81,300 |
+|       8 |           1.98 s |     206,800 |      3.95 s |     103,800 |
+
+Neither reaches 8x: this machine has six performance cores and four efficiency ones, so an even
+split leaves the efficiency cores finishing last.
+
+## When not to use this
+
+**You already store fingerprints.** `similaritySearch` builds the 512-bit FragFp for every idcode at
+about 947 µs, and that is essentially the entire cost — the Tanimoto comparison itself is 0.03 µs in
+plain JavaScript, so building the fingerprint costs 30,000 times what comparing one does. If you
+keep the fingerprints, as `openchemlib-sqlite` does in its `ocl_ss_index` table, compare those
+directly and skip this function. It exists for the case where idcodes are all you have.
+
+**You can prescreen in SQL.** A fingerprint screen in the query removes most candidates before
+anything is parsed, and that is worth far more than 1.8x. Run `ssSearch` over the survivors, not
+over the whole table.
+
+## Browser and Node
+
+Needs WebAssembly GC and, for the worker recipe, `SharedArrayBuffer`: Node 22 or later,
+Chrome/Edge 119+, Firefox 120+, current Safari.
+
+The module ships inside the bundle. `wasm/` holds the 381 KB module as a gzip+base64 string plus the
+TeaVM runtime; the loader decodes it with `atob` and `DecompressionStream` and instantiates it —
+no `fetch`, no `fs`, no separate `.wasm` asset to configure in a bundler. That is what lets a worker
+start the module from the same bundle it was loaded from, and the whole import — decode, gunzip,
+compile, instantiate — costs 51–91 ms once per worker.
+The package is an ES module that instantiates on import, so both functions are plain synchronous
+calls.
+
+## Building from source
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) — a JDK 21, Maven, and the `openchemlib` submodule.
+
+## License
+
+BSD-3-Clause.

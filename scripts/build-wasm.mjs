@@ -16,7 +16,7 @@
 //
 // Override with JAVA21_HOME to point at a specific JDK.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const REQUIRED_MAJOR = 21;
@@ -25,7 +25,7 @@ const pom = join(root, 'java', 'pom.xml');
 const wasm = join(root, 'java', 'target', 'wasm-gc', 'openchemlib.wasm');
 
 const javaHome = resolveJavaHome();
-// eslint-disable-next-line no-console
+
 console.log(`build-wasm: using JDK ${jdkMajor(javaHome)} at ${javaHome}`);
 
 // Always `clean` first: the facade is compiled with `-sourcepath`, so javac
@@ -47,16 +47,15 @@ if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status ?? 1);
 
 if (!existsSync(wasm)) {
-  // eslint-disable-next-line no-console
   console.error(`build-wasm: Maven succeeded but ${wasm} was not produced.`);
   process.exit(1);
 }
 
+// eslint-disable-next-line jsdoc/require-returns-check -- the no-JDK branch exits instead of returning
 /**
  * Resolves the home of a JDK whose major version is >= REQUIRED_MAJOR, trying an
  * explicit override, the current environment, the macOS registry, then well-known
- * Homebrew and Linux install locations. Exits with a helpful message if none is found.
- *
+ * Homebrew and Linux install locations. Exits the process with a helpful message if none is found.
  * @returns {string} the validated JAVA_HOME
  */
 function resolveJavaHome() {
@@ -64,7 +63,7 @@ function resolveJavaHome() {
     const major = jdkMajor(home);
     if (major !== null && major >= REQUIRED_MAJOR) return home;
   }
-  // eslint-disable-next-line no-console
+
   console.error(
     `build-wasm: no JDK >= ${REQUIRED_MAJOR} found.\n` +
       `  Install one (e.g. \`brew install openjdk@${REQUIRED_MAJOR}\`) or set\n` +
@@ -102,7 +101,6 @@ function* candidateHomes() {
 /**
  * Reads the major Java version of a JDK home, preferring the cheap `release` file
  * and falling back to `java -version`.
- *
  * @param {string} home - candidate JAVA_HOME
  * @returns {number | null} the major version, or null if `home` is not a usable JDK
  */
@@ -111,15 +109,15 @@ function jdkMajor(home) {
   const releaseFile = join(home, 'release');
   if (existsSync(releaseFile)) {
     const match = readFileSync(releaseFile, 'utf8').match(
-      /JAVA_VERSION="(\d+)/,
+      /JAVA_VERSION="(?<major>\d+)/,
     );
-    if (match) return Number(match[1]);
+    if (match) return Number(match.groups.major);
   }
   const javaBin = join(home, 'bin', 'java');
   if (!existsSync(javaBin)) return null;
   const probe = spawnSync(javaBin, ['-version'], { encoding: 'utf8' });
   const match = `${probe.stdout ?? ''}${probe.stderr ?? ''}`.match(
-    /version "(\d+)/,
+    /version "(?<major>\d+)/,
   );
-  return match ? Number(match[1]) : null;
+  return match ? Number(match.groups.major) : null;
 }

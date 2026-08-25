@@ -1,0 +1,22 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+# release-please only (npm: false). It bumps the version, maintains CHANGELOG.md,
+# and creates the git tag + GitHub Release from conventional commits. The shared
+# workflow's publish job runs on a Node-only runner and cannot build the WasmGC
+# module (which needs a JDK 21 + Maven toolchain), so the actual npm publish is
+# handled by the dedicated npm-publish.yml, triggered by the GitHub Release
+# created here. BOT_TOKEN (not the default GITHUB_TOKEN) is required so that the
+# release event fires the downstream publish workflow.
+jobs:
+  release:
+    # Documentation: https://github.com/zakodium/workflows#release
+    uses: zakodium/workflows/.github/workflows/release.yml@release-v1
+    with:
+      npm: false
+    secrets:
+      github-token: ${{ secrets.BOT_TOKEN }}

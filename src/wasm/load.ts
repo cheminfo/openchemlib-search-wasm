@@ -1,28 +1,25 @@
-import { wasmGzipBase64 } from '../../dist/data.ts';
-import { load } from '../../dist/runtime.js';
-import type { OCL } from '../types.ts';
+import { wasmGzipBase64 } from '../../wasm/data.js';
+import { load } from '../../wasm/runtime.js';
+import type { OCLSearch } from '../types.ts';
 
-let modulePromise: Promise<OCL> | undefined;
+let modulePromise: Promise<OCLSearch> | undefined;
 
 /**
- * Loads and instantiates the embedded OpenChemLib WasmGC module. The module is
- * compiled once and cached; subsequent calls return the same instance. The
- * parameter tables (force field, predictors, torsion data) are bundled inside
- * the wasm, so the force field, conformer generator and predictors work with no
- * separate registration step. Decoding uses only Web Platform APIs (atob +
- * DecompressionStream), so it works the same in Node and the browser with no
- * filesystem or fetch.
- * @returns the OpenChemLib WASM exports
+ * Loads and instantiates the embedded OpenChemLib WasmGC module. The module is compiled once and
+ * cached; subsequent calls return the same instance. Decoding uses only Web Platform APIs (atob +
+ * DecompressionStream), so Node and the browser take the same path, with no filesystem and no
+ * fetch — which is what lets a worker instantiate it from the bundle it was loaded from.
+ * @returns The module's exports.
  */
-export function loadOCL(): Promise<OCL> {
+export function loadOCL(): Promise<OCLSearch> {
   modulePromise ??= instantiate();
   return modulePromise;
 }
 
-async function instantiate(): Promise<OCL> {
+async function instantiate(): Promise<OCLSearch> {
   const wasmBytes = await gunzip(base64ToBytes(wasmGzipBase64));
   const teavm = await load(wasmBytes);
-  return teavm.exports as unknown as OCL;
+  return teavm.exports as unknown as OCLSearch;
 }
 
 function base64ToBytes(base64: string): Uint8Array<ArrayBuffer> {

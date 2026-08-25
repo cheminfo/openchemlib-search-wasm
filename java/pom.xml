@@ -10,16 +10,17 @@
   <packaging>jar</packaging>
 
   <!--
-    Compiles the OpenChemLib subset reachable from the @JSExport facade
-    (org.openchemlib.wasm.api.*) to a single WasmGC module. Build with JDK >= 11
-    (this repo uses 21). See ../README.md for the toolchain rationale and the two
-    build gotchas (teavm-core scope; on-demand -sourcepath compilation).
+    Compiles org.openchemlib.wasm.Search, plus the OpenChemLib closure it reaches, to a single
+    WasmGC module. OpenChemLib itself is NOT vendored: javac pulls it from the `openchemlib` git
+    submodule through -sourcepath, so upgrading OCL is a submodule bump and nothing else.
+    See ../CONTRIBUTING.md.
   -->
 
   <properties>
     <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <teavm.version>0.14.1</teavm.version>
+    <teavm.strict>false</teavm.strict>
   </properties>
 
   <dependencies>
@@ -28,6 +29,10 @@
       <artifactId>teavm-classlib</artifactId>
       <version>${teavm.version}</version>
     </dependency>
+    <!--
+      teavm-classlib declares teavm-core at `runtime` scope, but the maven plugin analyzes only the
+      compile classpath; without this the WasmGC build fails with `"fiberClass" is null`.
+    -->
     <dependency>
       <groupId>org.teavm</groupId>
       <artifactId>teavm-core</artifactId>
@@ -38,6 +43,12 @@
       <artifactId>teavm-jso</artifactId>
       <version>${teavm.version}</version>
     </dependency>
+    <!-- org.teavm.jso.typedarrays.{Uint8Array,Float32Array}: the caller-owned result buffers. -->
+    <dependency>
+      <groupId>org.teavm</groupId>
+      <artifactId>teavm-jso-apis</artifactId>
+      <version>${teavm.version}</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -45,16 +56,21 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
         <configuration>
-          <!-- Compile only the facade; javac pulls the reachable OCL closure on
-               demand via -sourcepath, skipping the off-path files that reference
-               excluded packages (conformer/docking/editor/flexophore). -->
+          <!--
+            Compile only our own sources; javac pulls the reachable OpenChemLib closure on demand
+            from -sourcepath. `overlay` sits before the submodule so a file placed there wins
+            first-match resolution — the escape hatch for the day an upstream file cannot be
+            compiled as-is. It is empty, and staying empty is the goal.
+          -->
           <includes>
-            <include>org/openchemlib/wasm/api/*.java</include>
+            <include>org/openchemlib/wasm/*.java</include>
           </includes>
           <compilerArgs>
             <arg>-sourcepath</arg>
-            <arg>${project.basedir}/src/main/java</arg>
+            <arg>${project.basedir}/src/main/java:${project.basedir}/overlay:${project.basedir}/../openchemlib/src/main/java</arg>
+            <arg>-nowarn</arg>
           </compilerArgs>
         </configuration>
       </plugin>
@@ -71,12 +87,18 @@
             </goals>
             <configuration>
               <targetType>WEBASSEMBLY_GC</targetType>
-              <mainClass>org.openchemlib.wasm.api.Entry</mainClass>
+              <mainClass>org.openchemlib.wasm.Entry</mainClass>
               <targetDirectory>${project.build.directory}/wasm-gc</targetDirectory>
               <targetFileName>openchemlib.wasm</targetFileName>
               <minifying>true</minifying>
               <optimizationLevel>FULL</optimizationLevel>
-              <strict>false</strict>
+              <!--
+                strict=false drops WasmGC null and array-bounds checks. It is the difference between
+                ~2x and ~4x over the JS build in the isomorphism inner loop, and the usual
+                release-build trade-off; the test suite cross-checks every result against
+                openchemlib-js so a real out-of-bounds would show up as a wrong answer, not silence.
+              -->
+              <strict>${teavm.strict}</strict>
               <assertionsRemoved>true</assertionsRemoved>
             </configuration>
           </execution>

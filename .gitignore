@@ -1,7 +1,10 @@
-target
-dist
-node_modules
-coverage
 .claude
+.deploy
 .DS_Store
+/coverage
+dev/dist
+dev/public/idcodes.*
+java/target
+/lib
+node_modules
 *.log
