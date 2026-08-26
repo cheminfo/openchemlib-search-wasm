@@ -51,7 +51,8 @@ for (let i = 0; i < molecules; i++) {
   shaped[i] = NON_ASCII + idCodes[i].slice(1);
 }
 const empty = new Array(molecules).fill('');
-const result = new Uint8Array(molecules);
+// Only the plain-JS case needs a buffer of its own; the wasm cases hand one back.
+const jsResult = new Uint8Array(molecules);
 const computed = new Map();
 
 console.log(
@@ -60,13 +61,13 @@ console.log(
 );
 
 function marshalStrings() {
-  ssSearch(query.idCode, shaped, result);
-  computed.set('wasm: strings in, bytes out', unparsable());
+  const result = ssSearch(query.idCode, shaped);
+  computed.set('wasm: strings in, bytes out', unparsable(result));
 }
 
 function marshalNothing() {
-  ssSearch(query.idCode, empty, result);
-  computed.set('wasm: empty strings in, bytes out', unparsable());
+  const result = ssSearch(query.idCode, empty);
+  computed.set('wasm: empty strings in, bytes out', unparsable(result));
 }
 
 function marshalInJs() {
@@ -74,20 +75,20 @@ function marshalInJs() {
   for (let i = 0; i < shaped.length; i++) {
     const idCode = shaped[i];
     if (idCode.length === 0 || idCode.codePointAt(0) > 127) {
-      result[i] = SubstructureResult.unparsable;
+      jsResult[i] = SubstructureResult.unparsable;
       rejected++;
     } else {
-      result[i] = SubstructureResult.noMatch;
+      jsResult[i] = SubstructureResult.noMatch;
     }
   }
   computed.set('plain JS: the same loop', `${count(rejected)} unparsable`);
 }
 
 function wholeScan() {
-  ssSearch(query.idCode, idCodes, result);
+  const scanned = ssSearch(query.idCode, idCodes);
   let matches = 0;
-  for (let i = 0; i < result.length; i++) {
-    if (result[i] === SubstructureResult.match) matches++;
+  for (let i = 0; i < scanned.length; i++) {
+    if (scanned[i] === SubstructureResult.match) matches++;
   }
   computed.set('wasm: a real benzene scan', `${count(matches)} matches`);
 }
@@ -162,7 +163,12 @@ conclude(
     'marshalling. Watch this number across TeaVM upgrades.',
 );
 
-function unparsable() {
+/**
+ * Checks a boundary case really crossed the boundary and nothing else.
+ * @param {Uint8Array} result - What the scan returned.
+ * @returns {string} How many entries were rejected, for the report.
+ */
+function unparsable(result) {
   let rejected = 0;
   for (let i = 0; i < result.length; i++) {
     if (result[i] === SubstructureResult.unparsable) rejected++;

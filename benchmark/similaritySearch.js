@@ -46,16 +46,17 @@ printHeader(
   corpus,
 );
 
-const wasmResult = new Float32Array(molecules);
-const jsResult = new Float32Array(molecules);
+// Each scan hands back its own buffer; the last one of each engine is what the checks read.
+let wasmResult = new Float32Array(molecules);
+let jsResult = new Float32Array(molecules);
 
 console.log('Same work? one scan per engine, similarities compared.\n');
-const wasmSeconds = seconds(() =>
-  similaritySearch(query.idCode, idCodes, wasmResult),
-);
-const jsSeconds = seconds(() =>
-  similaritySearchJs(query.idCode, idCodes, jsResult),
-);
+const wasmSeconds = seconds(() => {
+  wasmResult = similaritySearch(query.idCode, idCodes);
+});
+const jsSeconds = seconds(() => {
+  jsResult = similaritySearchJs(query.idCode, idCodes);
+});
 let worst = 0;
 for (let i = 0; i < molecules; i++) {
   const difference = Math.abs(wasmResult[i] - jsResult[i]);
@@ -90,12 +91,12 @@ console.log(
 const computed = new Map();
 
 function scanWasm() {
-  similaritySearch(query.idCode, idCodes, wasmResult);
+  wasmResult = similaritySearch(query.idCode, idCodes);
   computed.set('wasm', `mean ${(total(wasmResult) / molecules).toFixed(4)}`);
 }
 
 function scanJs() {
-  similaritySearchJs(query.idCode, idCodes, jsResult);
+  jsResult = similaritySearchJs(query.idCode, idCodes);
   computed.set(
     'openchemlib-js',
     `mean ${(total(jsResult) / molecules).toFixed(4)}`,

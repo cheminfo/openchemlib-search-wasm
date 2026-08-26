@@ -1,9 +1,8 @@
 /**
  * The status of one entry of an `ssSearch` result buffer.
  *
- * A caller that splits the work across workers backs the buffer with a `SharedArrayBuffer` and
- * reads it while the scan runs: every entry still holding `unprocessed` is one the workers have not
- * reached yet.
+ * `unprocessed` is what a `search` that stopped early leaves behind, and what every entry the
+ * current step has not reached yet still holds.
  */
 export const SubstructureResult = Object.freeze({
   /** Not tested yet. */
@@ -29,7 +28,7 @@ export const SimilarityResult = Object.freeze({
   unparsable: -1,
 });
 
-/** A caller-owned result buffer: bytes for a substructure scan, floats for a similarity one. */
+/** What a search fills: bytes for a substructure scan, floats for a similarity one. */
 export type ResultBuffer = Uint8Array | Float32Array;
 
 /**
@@ -40,6 +39,11 @@ export type SearchMode = 'substructure' | 'similarity';
 
 /** What landed since the previous step. */
 export interface SearchStep {
+  /**
+   * The buffer being filled, so a caller can render matches while the scan is still running. It is
+   * the same buffer at every step, and the one the summary carries.
+   */
+  result: ResultBuffer;
   /** First index written since the previous step. */
   from: number;
   /** One past the last index written since the previous step. */
@@ -58,7 +62,13 @@ export interface SearchStep {
 }
 
 /** How a search ended. */
-export interface SearchSummary {
+export interface SearchSummary<Result extends ResultBuffer = ResultBuffer> {
+  /**
+   * One entry per idcode: a {@link SubstructureResult} code per byte in `substructure` mode, a
+   * Tanimoto coefficient in `similarity` mode. Entries past `processed` are left unprocessed when
+   * the search stopped early.
+   */
+  result: Result;
   /** How many entries were written. Short of `total` when the search stopped early. */
   processed: number;
   /** How many of them matched. */

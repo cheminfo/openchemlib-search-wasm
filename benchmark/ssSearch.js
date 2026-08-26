@@ -37,21 +37,20 @@ printHeader(
   corpus,
 );
 
-const wasmResult = new Uint8Array(molecules);
-const jsResult = new Uint8Array(molecules);
 const hits = new Map();
 
 // The two engines run through this file's cases as two functions and never one shared one: a single
 // scanner called with both would see two call shapes at every site and be measured half-optimised
 // for each. A query is only a string value, so the six of them share a scanner without that risk.
 function scanWasm(query) {
-  ssSearch(query.idCode, idCodes, wasmResult);
-  hits.set(`${query.name} wasm`, countMatches(wasmResult));
+  hits.set(`${query.name} wasm`, countMatches(ssSearch(query.idCode, idCodes)));
 }
 
 function scanJs(query) {
-  ssSearchJs(query.idCode, idCodes, jsResult);
-  hits.set(`${query.name} openchemlib-js`, countMatches(jsResult));
+  hits.set(
+    `${query.name} openchemlib-js`,
+    countMatches(ssSearchJs(query.idCode, idCodes)),
+  );
 }
 
 console.log('Same work? one scan per engine per query, hit counts compared.\n');

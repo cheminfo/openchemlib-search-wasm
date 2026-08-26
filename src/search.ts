@@ -1,6 +1,7 @@
 import { scanRange } from './scan.ts';
 import type {
   ResultBuffer,
+  SearchMode,
   SearchOptions,
   SearchStep,
   SearchSummary,
@@ -45,19 +46,32 @@ const DEFAULT_THRESHOLD = 0.8;
  * Returning `false` from `onStep` stops the search, which is what makes a common query cheap: with
  * a 62% hit rate, stopping at the first 100 matches reads 768 molecules instead of 409,686 and
  * takes 7 ms instead of 9.2 s.
+ * The buffer is on every `onStep` call as well as on the summary, so a caller can render matches
+ * while the scan is still running rather than waiting for the promise.
  * @param idCodeQuery - The query, as an idcode.
  * @param idCodes - The molecules to search.
- * @param result - The caller's buffer: a `Uint8Array` for `substructure`, a `Float32Array` for
- * `similarity`. Must be exactly as long as `idCodes`; it is reset before the scan starts.
  * @param options - Mode, reporting interval, `onStep` callback, abort controller and threshold.
- * @returns How the search ended.
- * @throws {TypeError} If `result` is the wrong length or the wrong kind for the mode.
+ * @returns How the search ended, and the buffer it filled.
  * @throws {DOMException} `AbortError`, if `options.controller` was aborted.
  */
 export async function search(
   idCodeQuery: string,
   idCodes: string[],
-  result: ResultBuffer,
+  options: SearchOptions & { mode: 'similarity' },
+): Promise<SearchSummary<Float32Array>>;
+export async function search(
+  idCodeQuery: string,
+  idCodes: string[],
+  options?: SearchOptions & { mode?: 'substructure' },
+): Promise<SearchSummary<Uint8Array>>;
+export async function search(
+  idCodeQuery: string,
+  idCodes: string[],
+  options?: SearchOptions,
+): Promise<SearchSummary>;
+export async function search(
+  idCodeQuery: string,
+  idCodes: string[],
   options: SearchOptions = {},
 ): Promise<SearchSummary> {
   const {
@@ -67,14 +81,9 @@ export async function search(
     controller,
     threshold = DEFAULT_THRESHOLD,
   } = options;
-  checkBuffer(mode, idCodes, result);
 
   const total = idCodes.length;
-  result.fill(
-    mode === 'similarity'
-      ? SimilarityResult.unprocessed
-      : SubstructureResult.unprocessed,
-  );
+  const result = newResult(mode, total);
 
   const started = performance.now();
   let chunk = FIRST_CHUNK[mode];
@@ -95,6 +104,7 @@ export async function search(
     matched += counts.matched;
     unparsable += counts.unparsable;
     const step: SearchStep = {
+      result,
       from: processed,
       to,
       processed: to,
@@ -119,6 +129,7 @@ export async function search(
 
   throwIfAborted(controller);
   return {
+    result,
     processed,
     matched,
     unparsable,
@@ -166,22 +177,18 @@ function count(
   return { matched, unparsable };
 }
 
-function checkBuffer(
-  mode: 'substructure' | 'similarity',
-  idCodes: string[],
-  result: ResultBuffer,
-): void {
-  if (result.length !== idCodes.length) {
-    throw new TypeError(
-      `result must hold one entry per idcode: got ${result.length} for ${idCodes.length} idcodes`,
-    );
-  }
-  const wanted = mode === 'similarity' ? Float32Array : Uint8Array;
-  if (!(result instanceof wanted)) {
-    throw new TypeError(
-      `${mode} search writes a ${wanted.name}, but result is a ${result.constructor.name}`,
-    );
-  }
+/**
+ * Allocates the buffer the mode writes into, reset to its "not yet" value.
+ * @param mode - Which search will fill it.
+ * @param total - How many idcodes there are.
+ * @returns The buffer.
+ */
+function newResult(mode: SearchMode, total: number): ResultBuffer {
+  // A fresh Uint8Array is already all zeros, which is `unprocessed`.
+  if (mode !== 'similarity') return new Uint8Array(total);
+  const result = new Float32Array(total);
+  result.fill(SimilarityResult.unprocessed);
+  return result;
 }
 
 function throwIfAborted(controller: AbortController | undefined): void {

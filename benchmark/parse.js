@@ -64,18 +64,17 @@ console.log(
     `${largest} atoms, so no isomorphism ever starts.\n`,
 );
 
-const wasmResult = new Uint8Array(molecules);
 const jsResult = new Uint8Array(molecules);
 const computed = new Map();
 
 function parseWasm() {
-  ssSearch(unmatchableIdCode, idCodes, wasmResult);
-  computed.set('parse wasm', `${countMatches(wasmResult)} matches`);
+  const result = ssSearch(unmatchableIdCode, idCodes);
+  computed.set('parse wasm', `${countMatches(result)} matches`);
 }
 
 function matchWasm(query, name) {
-  ssSearch(query.idCode, idCodes, wasmResult);
-  computed.set(name, `${count(countMatches(wasmResult))} matches`);
+  const result = ssSearch(query.idCode, idCodes);
+  computed.set(name, `${count(countMatches(result))} matches`);
 }
 
 function parseJs() {

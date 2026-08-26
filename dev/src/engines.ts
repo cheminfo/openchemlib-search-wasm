@@ -4,12 +4,11 @@ import { SimilarityResult, SubstructureResult } from '../../src/types.ts';
 
 import type { Engine, Mode } from './protocol.ts';
 
-/** Runs one contiguous batch, writing one entry per idcode, in order. */
+/** Runs one contiguous batch, returning one entry per idcode, in order. */
 export type ScanBatch = (
   query: string,
   idCodes: string[],
-  result: Uint8Array | Float32Array,
-) => void;
+) => Uint8Array | Float32Array;
 
 /**
  * Builds the batch function for one engine.
@@ -27,25 +26,15 @@ export async function createScan(
 ): Promise<ScanBatch> {
   if (engine === 'wasm') {
     const { ssSearch, similaritySearch } = await import('#lib');
-    if (mode === 'substructure') {
-      return (query, idCodes, result) => {
-        ssSearch(query, idCodes, result as Uint8Array);
-      };
-    }
-    return (query, idCodes, result) => {
-      similaritySearch(query, idCodes, result as Float32Array);
-    };
+    if (mode === 'substructure') return ssSearch;
+    return similaritySearch;
   }
 
   const ocl = await import('openchemlib');
   if (mode === 'substructure') {
-    return (query, idCodes, result) => {
-      gwtSubstructure(ocl, query, idCodes, result as Uint8Array);
-    };
+    return (query, idCodes) => gwtSubstructure(ocl, query, idCodes);
   }
-  return (query, idCodes, result) => {
-    gwtSimilarity(ocl, query, idCodes, result as Float32Array);
-  };
+  return (query, idCodes) => gwtSimilarity(ocl, query, idCodes);
 }
 
 /**
@@ -55,14 +44,13 @@ export async function createScan(
  * @param ocl - The loaded `openchemlib` module.
  * @param query - The query, as an idcode.
  * @param idCodes - The molecules to test.
- * @param result - One status byte per molecule.
+ * @returns One status byte per molecule.
  */
 function gwtSubstructure(
   ocl: typeof OCL,
   query: string,
   idCodes: string[],
-  result: Uint8Array,
-): void {
+): Uint8Array {
   const fragment = parse(ocl, query);
   if (fragment === null) {
     throw new Error(`"${query}" is not a valid query idcode`);
@@ -70,6 +58,7 @@ function gwtSubstructure(
   fragment.setFragment(true);
   const searcher = new ocl.SSSearcher();
   searcher.setFragment(fragment);
+  const result = new Uint8Array(idCodes.length);
   for (let i = 0; i < idCodes.length; i++) {
     const molecule = parse(ocl, idCodes[i] ?? '');
     if (molecule === null) {
@@ -81,6 +70,7 @@ function gwtSubstructure(
       ? SubstructureResult.match
       : SubstructureResult.noMatch;
   }
+  return result;
 }
 
 /**
@@ -88,20 +78,20 @@ function gwtSubstructure(
  * @param ocl - The loaded `openchemlib` module.
  * @param query - The query, as an idcode.
  * @param idCodes - The molecules to compare against.
- * @param result - One Tanimoto coefficient per molecule.
+ * @returns One Tanimoto coefficient per molecule.
  */
 function gwtSimilarity(
   ocl: typeof OCL,
   query: string,
   idCodes: string[],
-  result: Float32Array,
-): void {
+): Float32Array {
   const molecule = parse(ocl, query);
   if (molecule === null) {
     throw new Error(`"${query}" is not a valid query idcode`);
   }
   const indexer = new ocl.SSSearcherWithIndex();
   const queryIndex = indexer.createIndex(molecule);
+  const result = new Float32Array(idCodes.length);
   for (let i = 0; i < idCodes.length; i++) {
     const target = parse(ocl, idCodes[i] ?? '');
     result[i] =
@@ -112,6 +102,7 @@ function gwtSimilarity(
             indexer.createIndex(target),
           );
   }
+  return result;
 }
 
 function parse(ocl: typeof OCL, idCode: string): OCL.Molecule | null {

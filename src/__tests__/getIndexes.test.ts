@@ -22,17 +22,22 @@ function referenceIndex(idCode: string): number[] {
 test('every word matches openchemlib-js createIndex', () => {
   const indexes = getIndexes(idCodes);
 
-  expect(indexes).toHaveLength(idCodes.length * INDEX_WORDS);
+  expect(indexes).toHaveLength(idCodes.length);
 
   for (let i = 0; i < idCodes.length; i++) {
     const expected = referenceIndex(idCodes[i] as string).map(
       (word) => word | 0,
     );
-    const actual = Array.from(
-      indexes.subarray(i * INDEX_WORDS, (i + 1) * INDEX_WORDS),
-    );
+    const actual = Array.from(indexes[i] as Int32Array);
 
     expect([i, actual]).toStrictEqual([i, expected]);
+  }
+});
+
+test('every index is sixteen words long', () => {
+  const indexes = getIndexes(idCodes.slice(0, 5));
+  for (const index of indexes) {
+    expect(index).toHaveLength(INDEX_WORDS);
   }
 });
 
@@ -46,22 +51,34 @@ test('a BigInt64Array view is exactly what packSSIndex produces', () => {
         new Uint32Array(referenceIndex(idCodes[i] as string)).buffer,
       ),
     );
-    const view = Array.from(new BigInt64Array(indexes.buffer, i * 64, 8));
+    const index = indexes[i] as Int32Array;
+    const view = Array.from(
+      new BigInt64Array(index.buffer, index.byteOffset, 8),
+    );
 
     expect([i, view]).toStrictEqual([i, packed]);
   }
 });
 
+// The views share one buffer, so each has to land on an 8-byte boundary or the BigInt64Array view
+// above would throw for every other molecule.
+test('every index starts on an 8-byte boundary', () => {
+  for (const index of getIndexes(idCodes.slice(0, 5))) {
+    expect(index.byteOffset % 8).toBe(0);
+  }
+});
+
 test('a molecule is a candidate for a fingerprint that is a subset of its own', () => {
   // benzene's own fingerprint, and a benzene-containing molecule from the fixture
-  const [benzeneIndex] = [getIndexes(['gFp@DiTt@@B'])];
+  const benzeneIndex = getIndex('gFp@DiTt@@B');
   const indexes = getIndexes(idCodes);
   let supersets = 0;
   for (let i = 0; i < idCodes.length; i++) {
+    const index = indexes[i] as Int32Array;
     let isSuperset = true;
     for (let word = 0; word < INDEX_WORDS; word++) {
       const query = benzeneIndex[word] as number;
-      if (((indexes[i * INDEX_WORDS + word] as number) & query) !== query) {
+      if (((index[word] as number) & query) !== query) {
         isSuperset = false;
         break;
       }
@@ -75,50 +92,21 @@ test('a molecule is a candidate for a fingerprint that is a subset of its own', 
 
 test('an unparsable idcode gets sixteen zeros, so it is never a candidate', () => {
   const indexes = getIndexes(['gCi@DDfZ@@', '', 'C1=CC=CC=C1']);
+  const zeros = Array.from({ length: INDEX_WORDS }, () => 0);
 
-  expect(Array.from(indexes.subarray(16, 32))).toStrictEqual(
-    Array.from({ length: 16 }, () => 0),
-  );
-  expect(Array.from(indexes.subarray(32, 48))).toStrictEqual(
-    Array.from({ length: 16 }, () => 0),
-  );
+  expect(Array.from(indexes[1] as Int32Array)).toStrictEqual(zeros);
+  expect(Array.from(indexes[2] as Int32Array)).toStrictEqual(zeros);
 
   let nonZero = 0;
-  for (let word = 0; word < 16; word++) {
-    if (indexes[word] !== 0) nonZero++;
+  for (const word of indexes[0] as Int32Array) {
+    if (word !== 0) nonZero++;
   }
 
   expect(nonZero).toBeGreaterThan(0);
 });
 
-test('a caller-supplied buffer is filled and returned', () => {
-  const buffer = new Int32Array(3 * INDEX_WORDS);
-  const returned = getIndexes(idCodes.slice(0, 3), buffer);
-
-  expect(returned).toBe(buffer);
-  expect(Array.from(buffer.subarray(0, 16))).toStrictEqual(
-    referenceIndex(idCodes[0] as string).map((word) => word | 0),
-  );
-});
-
-test('a buffer of the wrong length is refused', () => {
-  expect(() => getIndexes(idCodes.slice(0, 3), new Int32Array(16))).toThrow(
-    'result must hold 16 words per idcode: got 16 for 3 idcodes, expected 48',
-  );
-});
-
-test('an empty array gives an empty buffer', () => {
-  expect(getIndexes([])).toHaveLength(0);
-});
-
-// The eight ss_indexN columns are read back as a BigInt64Array view, which refuses a byte offset
-// that is not a multiple of 8 — so a misaligned buffer has to fail here, naming the argument.
-test('a buffer that cannot be viewed as BigInt64 is refused', () => {
-  const backing = new Int32Array(2 * INDEX_WORDS + 1);
-
-  expect(() => getIndexes(idCodes.slice(0, 2), backing.subarray(1))).toThrow(
-    'result must start on an 8-byte boundary so it can be read as BigInt64: its byteOffset is 4',
-  );
+test('an empty array gives no indexes', () => {
+  expect(getIndexes([])).toStrictEqual([]);
 });
 
 test('getIndex is the one-molecule form of getIndexes', () => {
@@ -126,19 +114,17 @@ test('getIndex is the one-molecule form of getIndexes', () => {
   for (let i = 0; i < 5; i++) {
     expect([i, Array.from(getIndex(idCodes[i] as string))]).toStrictEqual([
       i,
-      Array.from(batch.subarray(i * INDEX_WORDS, (i + 1) * INDEX_WORDS)),
+      Array.from(batch[i] as Int32Array),
     ]);
   }
 });
 
-test('getIndex fills a caller-supplied buffer and refuses a wrong one', () => {
-  const buffer = new Int32Array(INDEX_WORDS);
+test('getIndex returns sixteen words of its own', () => {
+  const index = getIndex(idCodes[0] as string);
 
-  expect(getIndex(idCodes[0] as string, buffer)).toBe(buffer);
-  expect(Array.from(buffer)).toStrictEqual(
+  expect(index).toHaveLength(INDEX_WORDS);
+  expect(index.byteOffset).toBe(0);
+  expect(Array.from(index)).toStrictEqual(
     referenceIndex(idCodes[0] as string).map((word) => word | 0),
-  );
-  expect(() => getIndex(idCodes[0] as string, new Int32Array(8))).toThrow(
-    'result must hold 16 words per idcode',
   );
 });

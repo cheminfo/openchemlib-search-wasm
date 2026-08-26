@@ -13,21 +13,21 @@ npm install openchemlib-search-wasm
 
 ```ts
 // blocking, whole array
-ssSearch(idCodeQuery: string, idCodes: string[], result: Uint8Array): void;
-similaritySearch(idCodeQuery: string, idCodes: string[], result: Float32Array): void;
+ssSearch(idCodeQuery: string, idCodes: string[]): Uint8Array;
+similaritySearch(idCodeQuery: string, idCodes: string[]): Float32Array;
 
 // reports as it goes, yields to the event loop, stops when you say so
-search(idCodeQuery: string, idCodes: string[], result: ResultBuffer,
+search(idCodeQuery: string, idCodes: string[],
        options?: SearchOptions): Promise<SearchSummary>;
 
 // the 512-bit FragFp, for a fingerprint table: sixteen 32-bit words per molecule
-getIndex(idCode: string, result?: Int32Array): Int32Array;
-getIndexes(idCodes: string[], result?: Int32Array): Int32Array;
+getIndex(idCode: string): Int32Array;
+getIndexes(idCodes: string[]): Int32Array[];
 ```
 
-`result` is your buffer. The three search functions reset it, then write one entry per idcode, in
-order, as the scan advances, so it must be exactly as long as `idCodes`. `getIndexes` is the
-exception: it writes `INDEX_WORDS` (16) words per idcode and resets nothing.
+Every call allocates and returns its own buffer, one entry per idcode, in order. `search` hands its
+buffer to `onStep` as well, so you can render matches while the scan is still running, and returns
+it on the summary.
 
 ```js
 import {
@@ -40,12 +40,10 @@ const benzene = 'gFp@DiTt@@B';
 // benzene, formic acid, naphthalene
 const idCodes = ['gFp@DiTt@@B', 'eMDARVB', 'det@@DjYUX^d@@@@B'];
 
-const hits = new Uint8Array(idCodes.length);
-ssSearch(benzene, idCodes, hits);
+const hits = ssSearch(benzene, idCodes);
 // Uint8Array [1, 2, 1] — match, no match, match
 
-const similarity = new Float32Array(idCodes.length);
-similaritySearch(benzene, idCodes, similarity);
+const similarity = similaritySearch(benzene, idCodes);
 // Float32Array [1, 0.125, 0.75]
 
 for (let i = 0; i < idCodes.length; i++) {
@@ -91,20 +89,19 @@ call throws, naming the query.
 
 ## Split it across workers
 
-The caller owns the buffer so that several workers can fill one array while the main thread reads
-it. Back it with a `SharedArrayBuffer`, give each worker its own slice of `idCodes` and
-`result.subarray(from, to)`, and read progress on the main thread. Each index is written by exactly
-one worker, so plain reads and writes are enough — no atomics.
+Each worker scans its own slice of `idCodes` and hands back the buffer it filled; the main thread
+copies it into place. Nothing is shared, so there is no `SharedArrayBuffer` and no cross-origin
+isolation to arrange — progress comes from the workers reporting it.
 
 ```js
 // main.js
 import { Worker } from 'node:worker_threads';
-import { SubstructureResult } from 'openchemlib-search-wasm';
 
 const idCodes = await loadYourIdCodes(); // string[]
 const workerCount = 8;
-const result = new Uint8Array(new SharedArrayBuffer(idCodes.length));
 const size = Math.ceil(idCodes.length / workerCount);
+const result = new Uint8Array(idCodes.length);
+let done = 0;
 
 const running = [];
 for (let from = 0; from < idCodes.length; from += size) {
@@ -113,43 +110,51 @@ for (let from = 0; from < idCodes.length; from += size) {
   worker.postMessage({
     idCodeQuery: 'gFp@DiTt@@B',
     idCodes: idCodes.slice(from, to),
-    result: result.subarray(from, to),
   });
   running.push(
-    new Promise((resolve) =>
-      worker.on('message', () => resolve(worker.terminate())),
-    ),
+    new Promise((resolve) => {
+      worker.on('message', (message) => {
+        if (message.type === 'progress') {
+          done += message.scanned;
+          render(done / idCodes.length);
+          return;
+        }
+        result.set(new Uint8Array(message.result), from);
+        resolve(worker.terminate());
+      });
+    }),
   );
 }
 
-const timer = setInterval(() => {
-  let done = 0;
-  for (let i = 0; i < result.length; i++) {
-    if (result[i] !== SubstructureResult.unprocessed) done++;
-  }
-  render(done / result.length);
-}, 100);
-
 await Promise.all(running);
-clearInterval(timer);
 ```
 
 ```js
 // worker.js
 import { parentPort } from 'node:worker_threads';
-import { ssSearch } from 'openchemlib-search-wasm';
+import { search } from 'openchemlib-search-wasm';
 
-parentPort.on('message', ({ idCodeQuery, idCodes, result }) => {
-  ssSearch(idCodeQuery, idCodes, result);
-  parentPort.postMessage('done');
+parentPort.on('message', async ({ idCodeQuery, idCodes }) => {
+  let reported = 0;
+  const { result } = await search(idCodeQuery, idCodes, {
+    onStep({ processed }) {
+      parentPort.postMessage({
+        type: 'progress',
+        scanned: processed - reported,
+      });
+      reported = processed;
+    },
+  });
+  parentPort.postMessage({ type: 'done', result: result.buffer }, [
+    result.buffer,
+  ]);
 });
 ```
 
-A worker blocks its own thread for the whole call, which is the point: the main thread stays free to
-render. In the browser the shape is identical with `Worker` and `postMessage`, but the page must be
-cross-origin isolated for `SharedArrayBuffer` to exist — serve it with
-`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. Node
-`worker_threads` needs nothing.
+The buffer is transferred rather than copied, so a worker's answer costs nothing to bring home. A
+worker that only has to report at the end calls `ssSearch(idCodeQuery, idCodes)` instead and blocks
+its own thread — that is what a worker is for, and the main thread stays free to render. In the
+browser the shape is identical with `Worker` and `postMessage`.
 
 ## Search with a callback
 
@@ -161,13 +166,12 @@ The vocabulary is the one `openchemlib-utils` and `openchemlib-sqlite` already u
 ```js
 import { search, SubstructureResult } from 'openchemlib-search-wasm';
 
-const result = new Uint8Array(idCodes.length);
 const hits = [];
 
-const summary = await search(benzene, idCodes, result, {
-  mode: 'substructure', // or 'similarity', with a Float32Array
+const summary = await search(benzene, idCodes, {
+  mode: 'substructure', // or 'similarity', which gives a Float32Array
   interval: 100, // ms of scanning between onStep calls
-  onStep({ from, to, matched, processed, total }) {
+  onStep({ result, from, to, matched, processed, total }) {
     for (let i = from; i < to; i++) {
       if (result[i] === SubstructureResult.match) hits.push(i);
     }
@@ -175,16 +179,16 @@ const summary = await search(benzene, idCodes, result, {
     return hits.length < 100; // false stops the search
   },
 });
-// { processed, matched, unparsable, total, elapsed, stopped }
+// { result, processed, matched, unparsable, total, elapsed, stopped }
 ```
 
-| option       | default          |                                                                         |
-| ------------ | ---------------- | ----------------------------------------------------------------------- |
-| `mode`       | `'substructure'` | `'substructure'` writes a `Uint8Array`, `'similarity'` a `Float32Array` |
-| `interval`   | `100`            | ms of scanning between `onStep` calls; the chunk size adapts to hit it  |
-| `onStep`     | —                | return `false` to stop                                                  |
-| `controller` | —                | an `AbortController`; aborting rejects with an `AbortError`             |
-| `threshold`  | `0.8`            | in `similarity` mode, what counts as a match in `step.matched`          |
+| option       | default          |                                                                        |
+| ------------ | ---------------- | ---------------------------------------------------------------------- |
+| `mode`       | `'substructure'` | `'substructure'` gives a `Uint8Array`, `'similarity'` a `Float32Array` |
+| `interval`   | `100`            | ms of scanning between `onStep` calls; the chunk size adapts to hit it |
+| `onStep`     | —                | return `false` to stop                                                 |
+| `controller` | —                | an `AbortController`; aborting rejects with an `AbortError`            |
+| `threshold`  | `0.8`            | in `similarity` mode, what counts as a match in `step.matched`         |
 
 **Stopping early is where this pays.** Over the whole 409,686-idcode corpus, with benzene:
 
@@ -203,17 +207,22 @@ variance, not mis-sizing, and a caller wanting smoother frames sets `interval: 1
 
 `getIndexes` returns the 512-bit FragFp of every idcode, sixteen 32-bit words each, in the same word
 order `openchemlib-js`'s `createIndex` produces — verified bit for bit. A `BigInt64Array` view over
-it is exactly the eight columns `openchemlib-sqlite` stores, so there is no conversion and no copy:
+one is exactly the eight columns `openchemlib-sqlite` stores, so there is no conversion and no copy:
 
 ```js
-import { getIndexes } from 'openchemlib-search-wasm';
+import { getIndex, getIndexes } from 'openchemlib-search-wasm';
 
 const indexes = getIndexes(idCodes);
 for (let i = 0; i < idCodes.length; i++) {
-  const columns = new BigInt64Array(indexes.buffer, i * 64, 8); // ss_index0..7
+  const index = indexes[i]; // Int32Array of 16 words
+  const columns = new BigInt64Array(index.buffer, index.byteOffset, 8); // ss_index0..7
   insert.run(entryId[i], ...columns);
 }
 ```
+
+The sixteen-word views share one buffer, so the array of them costs one allocation, not one per
+molecule. A row-at-a-time importer calls `getIndex(idCode)` instead and pays exactly the same per
+molecule.
 
 Building a fingerprint is about forty times a substructure test, so this is the expensive part of
 importing a library — and where the biggest speedup is:
@@ -312,8 +321,7 @@ over the whole table.
 
 ## Browser and Node
 
-Needs WebAssembly GC and, for the worker recipe, `SharedArrayBuffer`: Node 22 or later,
-Chrome/Edge 119+, Firefox 120+, current Safari.
+Needs WebAssembly GC: Node 22 or later, Chrome/Edge 119+, Firefox 120+, current Safari.
 
 The module ships inside the bundle. `wasm/` holds the 382 KB module as a gzip+base64 string plus the
 TeaVM runtime; the loader decodes it with `atob` and `DecompressionStream` and instantiates it —

@@ -96,7 +96,9 @@ function run(message: Extract<MainMessage, { type: 'run' }>): DoneMessage {
       );
     }
     const scanned = performance.now();
-    batch(query, slice, out.subarray(from, to));
+    // The engines allocate their own buffer, so the chunk is copied into the shared one the main
+    // thread renders from. It is a few hundred bytes against milliseconds of scanning.
+    out.set(batch(query, slice), from);
 
     decodeMs += scanned - decoded;
     scanMs += performance.now() - scanned;

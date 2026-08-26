@@ -23,8 +23,7 @@ test('the fixture is the corpus the cross-checks assume', () => {
 test.each(QUERIES)(
   'ssSearch agrees with openchemlib-js on every molecule, query $name',
   ({ idCode }) => {
-    const result = new Uint8Array(idCodes.length);
-    ssSearch(idCode, idCodes, result);
+    const result = ssSearch(idCode, idCodes);
     const expected = referenceSubstructure(idCode, idCodes);
 
     expect(firstDifference(result, expected)).toBe(-1);
@@ -34,25 +33,21 @@ test.each(QUERIES)(
 );
 
 test('hit counts are the ones this corpus is known to produce', () => {
-  const result = new Uint8Array(idCodes.length);
-  ssSearch('gFp@DiTt@@B', idCodes, result);
-
-  expect(countCode(result, SubstructureResult.match)).toBe(1268);
-
-  ssSearch('gChhMD@bNlA@', idCodes, result);
-
-  expect(countCode(result, SubstructureResult.match)).toBe(48);
-
-  ssSearch('det@@DjYUX^d@@@@B', idCodes, result);
-
-  expect(countCode(result, SubstructureResult.match)).toBe(85);
+  expect(
+    countCode(ssSearch('gFp@DiTt@@B', idCodes), SubstructureResult.match),
+  ).toBe(1268);
+  expect(
+    countCode(ssSearch('gChhMD@bNlA@', idCodes), SubstructureResult.match),
+  ).toBe(48);
+  expect(
+    countCode(ssSearch('det@@DjYUX^d@@@@B', idCodes), SubstructureResult.match),
+  ).toBe(85);
 });
 
 test('a molecule always contains itself', () => {
   const sample = idCodes.slice(0, 50);
-  const result = new Uint8Array(1);
   for (const idCode of sample) {
-    ssSearch(idCode, [idCode], result);
+    const result = ssSearch(idCode, [idCode]);
 
     expect([idCode, result[0]]).toStrictEqual([
       idCode,
@@ -61,20 +56,20 @@ test('a molecule always contains itself', () => {
   }
 });
 
+// What a worker pool does: each worker scans its own slice and its buffer is copied back into place.
 test('splitting the scan across worker-sized slices gives the same buffer', () => {
-  const whole = new Uint8Array(idCodes.length);
-  ssSearch('eMDARVB', idCodes, whole);
+  const whole = ssSearch('eMDARVB', idCodes);
 
-  const shared = new Uint8Array(new SharedArrayBuffer(idCodes.length));
+  const joined = new Uint8Array(idCodes.length);
   const workers = 4;
   const size = Math.ceil(idCodes.length / workers);
   for (let w = 0; w < workers; w++) {
     const from = w * size;
     const to = Math.min(from + size, idCodes.length);
-    ssSearch('eMDARVB', idCodes.slice(from, to), shared.subarray(from, to));
+    joined.set(ssSearch('eMDARVB', idCodes.slice(from, to)), from);
   }
 
-  expect(firstDifference(shared, whole)).toBe(-1);
+  expect(firstDifference(joined, whole)).toBe(-1);
 });
 
 // An idcode carries no checksum, so "malformed" only means "decodes to nothing": a string that
@@ -86,22 +81,19 @@ test.each([
   { name: 'a SMILES', idCode: 'C1=CC=CC=C1' },
   { name: 'a molfile line', idCode: '  Marvin  01010100002D' },
 ])('$name is reported as unparsable', ({ idCode }) => {
-  const result = new Uint8Array(1);
-  ssSearch('gFp@DiTt@@B', [idCode], result);
+  const result = ssSearch('gFp@DiTt@@B', [idCode]);
 
   expect(result[0]).toBe(SubstructureResult.unparsable);
 });
 
 test('an unparsable idcode is recorded and the scan continues', () => {
   const clean = idCodes.slice(0, 300);
-  const expected = new Uint8Array(clean.length);
-  ssSearch('gFp@DiTt@@B', clean, expected);
+  const expected = ssSearch('gFp@DiTt@@B', clean);
 
   const mixed = [...clean];
   const broken = new Set([7, 100, 299]);
   for (const index of broken) mixed[index] = '';
-  const result = new Uint8Array(mixed.length);
-  ssSearch('gFp@DiTt@@B', mixed, result);
+  const result = ssSearch('gFp@DiTt@@B', mixed);
 
   for (const index of broken) {
     expect(result[index]).toBe(SubstructureResult.unparsable);
@@ -123,10 +115,8 @@ test('a result does not depend on what was scanned before it', () => {
   for (const idCode of idCodes) {
     if (idCode.length > longest.length) longest = idCode;
   }
-  const alone = new Uint8Array(1);
-  ssSearch('gFp@DiTt@@B', ['C1=CC=CC=C1'], alone);
-  const afterLong = new Uint8Array(2);
-  ssSearch('gFp@DiTt@@B', [longest, 'C1=CC=CC=C1'], afterLong);
+  const alone = ssSearch('gFp@DiTt@@B', ['C1=CC=CC=C1']);
+  const afterLong = ssSearch('gFp@DiTt@@B', [longest, 'C1=CC=CC=C1']);
 
   expect(afterLong[1]).toBe(alone[0]);
 });
@@ -134,36 +124,29 @@ test('a result does not depend on what was scanned before it', () => {
 // Documents a property of the format rather than of this package: an idcode is self-delimiting and
 // unvalidated, so trailing bytes are simply never read.
 test('trailing junk after a valid idcode is ignored', () => {
-  const result = new Uint8Array(1);
-  ssSearch('gFp@DiTt@@B', ['gFp@DiTt@@B!!!!'], result);
+  const result = ssSearch('gFp@DiTt@@B', ['gFp@DiTt@@B!!!!']);
 
   expect(result[0]).toBe(SubstructureResult.match);
 });
 
-test('a result buffer of the wrong length is refused', () => {
-  expect(() =>
-    ssSearch('gFp@DiTt@@B', ['gCi@DDfZ@@'], new Uint8Array(2)),
-  ).toThrow('result must hold one entry per idcode: got 2 for 1 idcodes');
-});
-
 test('an unparsable query is blamed on the query, not on the first molecule', () => {
-  expect(() => ssSearch('', idCodes, new Uint8Array(idCodes.length))).toThrow(
-    '"" is not a valid query idcode',
-  );
+  expect(() => ssSearch('', idCodes)).toThrow('"" is not a valid query idcode');
 });
 
-test('an empty batch writes nothing and does not throw', () => {
-  const result = new Uint8Array(0);
-  ssSearch('gFp@DiTt@@B', [], result);
+test('an empty batch gives an empty buffer and does not throw', () => {
+  const result = ssSearch('gFp@DiTt@@B', []);
 
+  expect(result).toBeInstanceOf(Uint8Array);
   expect(result).toHaveLength(0);
 });
 
-test('a previous run does not leak into the next one', () => {
-  const result = new Uint8Array(idCodes.length).fill(SubstructureResult.match);
-  ssSearch('gChhMD@bNlA@', idCodes, result);
+test('the buffer is one entry per idcode, and a fresh one every call', () => {
+  const first = ssSearch('gChhMD@bNlA@', idCodes);
+  const second = ssSearch('gChhMD@bNlA@', idCodes);
 
-  expect(countCode(result, SubstructureResult.match)).toBe(48);
+  expect(first).toHaveLength(idCodes.length);
+  expect(first).not.toBe(second);
+  expect(firstDifference(first, second)).toBe(-1);
 });
 
 // The WASM module keeps the last query parsed, so a caller scanning one array in several calls does
@@ -172,19 +155,16 @@ test('interleaving queries gives each the same answers as running it alone', () 
   const sample = idCodes.slice(0, 300);
   const alone = new Map<string, number[]>();
   for (const { idCode } of QUERIES) {
-    const result = new Uint8Array(sample.length);
-    ssSearch(idCode, sample, result);
-    alone.set(idCode, Array.from(result));
+    alone.set(idCode, Array.from(ssSearch(idCode, sample)));
   }
 
   // walk the queries round-robin, one molecule at a time, so the cache is invalidated constantly
   const interleaved = new Map<string, number[]>(
     QUERIES.map(({ idCode }) => [idCode, []]),
   );
-  const one = new Uint8Array(1);
   for (const idCode of sample) {
     for (const query of QUERIES) {
-      ssSearch(query.idCode, [idCode], one);
+      const one = ssSearch(query.idCode, [idCode]);
       (interleaved.get(query.idCode) as number[]).push(one[0] as number);
     }
   }
@@ -199,17 +179,12 @@ test('interleaving queries gives each the same answers as running it alone', () 
 
 test('a query reused across calls still sees each molecule correctly', () => {
   const sample = idCodes.slice(0, 400);
-  const whole = new Uint8Array(sample.length);
-  ssSearch('gFp@DiTt@@B', sample, whole);
+  const whole = ssSearch('gFp@DiTt@@B', sample);
 
   // same query, one molecule per call: every call after the first hits the cached fragment
   const piecewise = new Uint8Array(sample.length);
   for (let i = 0; i < sample.length; i++) {
-    ssSearch(
-      'gFp@DiTt@@B',
-      [sample[i] as string],
-      piecewise.subarray(i, i + 1),
-    );
+    piecewise.set(ssSearch('gFp@DiTt@@B', [sample[i] as string]), i);
   }
 
   expect(firstDifference(piecewise, whole)).toBe(-1);

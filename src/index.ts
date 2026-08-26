@@ -1,5 +1,4 @@
 import { buildIndexes, checkQuery, scanRange } from './scan.ts';
-import type { ResultBuffer } from './types.ts';
 import { INDEX_WORDS, SimilarityResult, SubstructureResult } from './types.ts';
 
 export { search } from './search.ts';
@@ -14,39 +13,26 @@ export type {
 export { SimilarityResult, SubstructureResult } from './types.ts';
 
 /**
- * Tests a query fragment against many molecules, writing one status byte per molecule as the scan
- * advances.
+ * Tests a query fragment against many molecules, returning one status byte per molecule.
  *
  * This is the blocking primitive: it returns when the whole array has been tested. For a scan that
  * reports progress, yields to the event loop and can stop early, use `search`.
- *
- * `result` is the caller's buffer, and every entry is written exactly once, in order. Backing it
- * with a `SharedArrayBuffer` and giving each worker `result.subarray(from, to)` alongside its own
- * slice of `idCodes` lets the main thread render matches while the scan is still running; because
- * one index is only ever written by one worker, plain reads and writes are enough and no atomics
- * are needed.
  * @param idCodeQuery - The query, as an idcode. It is searched as a fragment whatever its own
  * fragment flag says, which is what `openchemlib`'s `SSSearcher` does with `setFragment(true)`.
  * @param idCodes - The molecules to test, as idcodes.
- * @param result - Filled with {@link SubstructureResult} codes. Must be exactly as long as
- * `idCodes`; it is reset to `unprocessed` before the scan starts.
- * @throws {TypeError} If `result` is not as long as `idCodes`.
+ * @returns One {@link SubstructureResult} code per idcode, in order.
  * @throws {Error} If the query cannot be parsed, or more than 100 idcodes cannot be.
  */
-export function ssSearch(
-  idCodeQuery: string,
-  idCodes: string[],
-  result: Uint8Array,
-): void {
-  checkLength(idCodes, result);
+export function ssSearch(idCodeQuery: string, idCodes: string[]): Uint8Array {
   checkQuery('substructure', idCodeQuery);
-  result.fill(SubstructureResult.unprocessed);
+  const result = new Uint8Array(idCodes.length);
   scanRange('substructure', idCodeQuery, idCodes, result, 0, idCodes.length);
+  return result;
 }
 
 /**
  * Computes the Tanimoto similarity of a query against many molecules on OpenChemLib's 512-bit
- * FragFp fingerprint, writing one float per molecule as the scan advances.
+ * FragFp fingerprint, returning one float per molecule.
  *
  * This is the blocking primitive; `search` is the reporting, abortable version.
  *
@@ -56,28 +42,18 @@ export function ssSearch(
  * cheaper than calling this. Use this when idcodes are all you have.
  * @param idCodeQuery - The query, as an idcode.
  * @param idCodes - The molecules to compare against, as idcodes.
- * @param result - Filled with the Tanimoto coefficient in [0, 1], or the {@link SimilarityResult}
- * sentinels. Must be exactly as long as `idCodes`; it is reset to `NaN` before the scan starts.
- * @throws {TypeError} If `result` is not as long as `idCodes`.
+ * @returns One Tanimoto coefficient in [0, 1] per idcode, or a {@link SimilarityResult} sentinel.
  * @throws {Error} If the query cannot be parsed, or more than 100 idcodes cannot be.
  */
 export function similaritySearch(
   idCodeQuery: string,
   idCodes: string[],
-  result: Float32Array,
-): void {
-  checkLength(idCodes, result);
+): Float32Array {
   checkQuery('similarity', idCodeQuery);
+  const result = new Float32Array(idCodes.length);
   result.fill(SimilarityResult.unprocessed);
   scanRange('similarity', idCodeQuery, idCodes, result, 0, idCodes.length);
-}
-
-function checkLength(idCodes: string[], result: ResultBuffer): void {
-  if (result.length !== idCodes.length) {
-    throw new TypeError(
-      `result must hold one entry per idcode: got ${result.length} for ${idCodes.length} idcodes`,
-    );
-  }
+  return result;
 }
 
 /**
@@ -98,16 +74,13 @@ function checkLength(idCodes: string[], result: ResultBuffer): void {
  * insert.run(mw, entryId, ...columns);
  * ```
  * @param idCode - The molecule to fingerprint, as an idcode.
- * @param result - Optional buffer of sixteen words to fill. One is allocated when it is omitted.
- * @returns The buffer. An idcode that will not parse gives sixteen zeros, which no non-empty query
- * is a subset of, so it can never be a false candidate.
- * @throws {TypeError} If `result` is not sixteen words long, or cannot be viewed as BigInt64.
+ * @returns Sixteen words. An idcode that will not parse gives sixteen zeros, which no non-empty
+ * query is a subset of, so it can never be a false candidate.
  */
-export function getIndex(
-  idCode: string,
-  result = new Int32Array(INDEX_WORDS),
-): Int32Array {
-  return getIndexes([idCode], result);
+export function getIndex(idCode: string): Int32Array {
+  const result = new Int32Array(INDEX_WORDS);
+  buildIndexes([idCode], result, 0, 1);
+  return result;
 }
 
 /**
@@ -116,30 +89,19 @@ export function getIndex(
  * See {@link getIndex} for the one-molecule form, which costs the same per molecule: the 512 key
  * fragments OpenChemLib matches against are parsed once and held for the module's lifetime, so
  * there is nothing for a batch to amortise.
+ *
+ * The fingerprints are written into one buffer and returned as a view per molecule, so the array
+ * costs one allocation rather than one per molecule, and every view is still 8-byte aligned and can
+ * be read as the eight `BigInt64` columns {@link getIndex} shows.
  * @param idCodes - The molecules to fingerprint, as idcodes.
- * @param result - Optional buffer to fill, of `16 * idCodes.length` words. One is allocated when it
- * is omitted.
- * @returns The buffer.
- * @throws {TypeError} If `result` is the wrong length or cannot be viewed as BigInt64.
+ * @returns One sixteen-word view per idcode, in order.
  */
-export function getIndexes(
-  idCodes: string[],
-  result = new Int32Array(idCodes.length * INDEX_WORDS),
-): Int32Array {
-  const wanted = idCodes.length * INDEX_WORDS;
-  if (result.length !== wanted) {
-    throw new TypeError(
-      `result must hold ${INDEX_WORDS} words per idcode: got ${result.length} for ${idCodes.length} idcodes, expected ${wanted}`,
-    );
+export function getIndexes(idCodes: string[]): Int32Array[] {
+  const all = new Int32Array(idCodes.length * INDEX_WORDS);
+  buildIndexes(idCodes, all, 0, idCodes.length);
+  const indexes = new Array<Int32Array>(idCodes.length);
+  for (let i = 0; i < idCodes.length; i++) {
+    indexes[i] = all.subarray(i * INDEX_WORDS, (i + 1) * INDEX_WORDS);
   }
-  // A BigInt64Array view is the whole point of this layout, and it refuses a byte offset that is not
-  // a multiple of 8. Catching it here says which argument is wrong, instead of failing later at the
-  // view with a RangeError that names nothing.
-  if (result.byteOffset % 8 !== 0) {
-    throw new TypeError(
-      `result must start on an 8-byte boundary so it can be read as BigInt64: its byteOffset is ${result.byteOffset}`,
-    );
-  }
-  buildIndexes(idCodes, result, 0, idCodes.length);
-  return result;
+  return indexes;
 }

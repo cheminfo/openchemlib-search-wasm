@@ -11,18 +11,20 @@ import { Molecule, SSSearcher, SSSearcherWithIndex } from 'openchemlib';
  * `false` selects here.
  * @param {string} idCodeQuery - The query, as an idcode, searched as a fragment.
  * @param {string[]} idCodes - The molecules to test.
- * @param {Uint8Array} result - Written with the `SubstructureResult` codes: 1 match, 2 no match.
- * @returns {void}
+ * @returns {Uint8Array} The `SubstructureResult` codes: 1 match, 2 no match. Allocated here, as
+ * `ssSearch` allocates its own, so the A/B compares the same work.
  */
-export function ssSearchJs(idCodeQuery, idCodes, result) {
+export function ssSearchJs(idCodeQuery, idCodes) {
   const fragment = Molecule.fromIDCode(idCodeQuery, false);
   fragment.setFragment(true);
   const searcher = new SSSearcher();
   searcher.setFragment(fragment);
+  const result = new Uint8Array(idCodes.length);
   for (let i = 0; i < idCodes.length; i++) {
     searcher.setMolecule(Molecule.fromIDCode(idCodes[i], false));
     result[i] = searcher.isFragmentInMolecule() ? 1 : 2;
   }
+  return result;
 }
 
 /**
@@ -30,18 +32,19 @@ export function ssSearchJs(idCodeQuery, idCodes, result) {
  * on the 512-bit FragFp fingerprint, mirroring `Search.similaritySearch`.
  * @param {string} idCodeQuery - The query, as an idcode.
  * @param {string[]} idCodes - The molecules to compare against.
- * @param {Float32Array} result - Written with the coefficient in [0, 1].
- * @returns {void}
+ * @returns {Float32Array} The coefficient in [0, 1] per molecule.
  */
-export function similaritySearchJs(idCodeQuery, idCodes, result) {
+export function similaritySearchJs(idCodeQuery, idCodes) {
   const indexer = new SSSearcherWithIndex();
   const queryIndex = indexer.createIndex(
     Molecule.fromIDCode(idCodeQuery, false),
   );
+  const result = new Float32Array(idCodes.length);
   for (let i = 0; i < idCodes.length; i++) {
     const index = indexer.createIndex(Molecule.fromIDCode(idCodes[i], false));
     result[i] = SSSearcherWithIndex.getSimilarityTanimoto(queryIndex, index);
   }
+  return result;
 }
 
 /**

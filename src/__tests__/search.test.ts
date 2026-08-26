@@ -15,13 +15,11 @@ const BENZENE = 'gFp@DiTt@@B';
 const NAPHTHALENE = 'det@@DjYUX^d@@@@B';
 
 test('a full substructure search writes exactly what ssSearch writes', async () => {
-  const expected = new Uint8Array(idCodes.length);
-  ssSearch(BENZENE, idCodes, expected);
+  const expected = ssSearch(BENZENE, idCodes);
 
-  const result = new Uint8Array(idCodes.length);
-  const summary = await search(BENZENE, idCodes, result);
+  const summary = await search(BENZENE, idCodes);
 
-  expect(firstDifference(result, expected)).toBe(-1);
+  expect(firstDifference(summary.result, expected)).toBe(-1);
   expect(summary.processed).toBe(idCodes.length);
   expect(summary.matched).toBe(1268);
   expect(summary.unparsable).toBe(0);
@@ -30,22 +28,17 @@ test('a full substructure search writes exactly what ssSearch writes', async () 
 
 test('similarity mode writes exactly what similaritySearch writes', async () => {
   const slice = idCodes.slice(0, 120);
-  const expected = new Float32Array(slice.length);
-  similaritySearch(NAPHTHALENE, slice, expected);
+  const expected = similaritySearch(NAPHTHALENE, slice);
 
-  const result = new Float32Array(slice.length);
-  const summary = await search(NAPHTHALENE, slice, result, {
-    mode: 'similarity',
-  });
+  const summary = await search(NAPHTHALENE, slice, { mode: 'similarity' });
 
-  expect(Array.from(result)).toStrictEqual(Array.from(expected));
+  expect(Array.from(summary.result)).toStrictEqual(Array.from(expected));
   expect(summary.processed).toBe(slice.length);
 });
 
 test('onStep reports contiguous ranges that cover the whole scan', async () => {
   const steps: SearchStep[] = [];
-  const result = new Uint8Array(idCodes.length);
-  await search(BENZENE, idCodes, result, {
+  await search(BENZENE, idCodes, {
     interval: 1,
     onStep: (step) => {
       steps.push(step);
@@ -70,8 +63,7 @@ test('onStep reports contiguous ranges that cover the whole scan', async () => {
 
 test('the running match count only ever grows, and ends at the total', async () => {
   const counts: number[] = [];
-  const result = new Uint8Array(idCodes.length);
-  const summary = await search(BENZENE, idCodes, result, {
+  const summary = await search(BENZENE, idCodes, {
     interval: 1,
     onStep: (step) => {
       counts.push(step.matched);
@@ -85,21 +77,21 @@ test('the running match count only ever grows, and ends at the total', async () 
 });
 
 test('returning false from onStep stops the scan and leaves the rest unprocessed', async () => {
-  const result = new Uint8Array(idCodes.length);
-  const summary = await search(BENZENE, idCodes, result, {
+  const summary = await search(BENZENE, idCodes, {
     interval: 1,
     onStep: (step) => step.matched < 20,
   });
+  const { result, stopped, matched, processed } = summary;
 
-  expect(summary.stopped).toBe(true);
-  expect(summary.matched).toBeGreaterThanOrEqual(20);
-  expect(summary.processed).toBeLessThan(idCodes.length);
+  expect(stopped).toBe(true);
+  expect(matched).toBeGreaterThanOrEqual(20);
+  expect(processed).toBeLessThan(idCodes.length);
   // everything past the stop is untouched, and everything before it was written
   expect(countCode(result, SubstructureResult.unprocessed)).toBe(
-    idCodes.length - summary.processed,
+    idCodes.length - processed,
   );
 
-  for (let i = 0; i < summary.processed; i++) {
+  for (let i = 0; i < processed; i++) {
     expect([i, result[i] !== SubstructureResult.unprocessed]).toStrictEqual([
       i,
       true,
@@ -108,8 +100,7 @@ test('returning false from onStep stops the scan and leaves the rest unprocessed
 });
 
 test('stopping early reads far less than the whole array', async () => {
-  const result = new Uint8Array(idCodes.length);
-  const summary = await search(BENZENE, idCodes, result, {
+  const summary = await search(BENZENE, idCodes, {
     interval: 1,
     onStep: (step) => step.matched < 5,
   });
@@ -119,8 +110,7 @@ test('stopping early reads far less than the whole array', async () => {
 
 test('an aborted search rejects with an AbortError', async () => {
   const controller = new AbortController();
-  const result = new Uint8Array(idCodes.length);
-  const promise = search(BENZENE, idCodes, result, {
+  const promise = search(BENZENE, idCodes, {
     interval: 1,
     controller,
     onStep: () => {
@@ -136,51 +126,58 @@ test('an aborted search rejects with an AbortError', async () => {
 test('a search aborted before it starts does no work', async () => {
   const controller = new AbortController();
   controller.abort();
-  const result = new Uint8Array(idCodes.length);
+  let stepped = false;
 
   await expect(
-    search(BENZENE, idCodes, result, { controller }),
+    search(BENZENE, idCodes, {
+      controller,
+      onStep: () => {
+        stepped = true;
+      },
+    }),
   ).rejects.toThrow(expect.objectContaining({ name: 'AbortError' }));
-  expect(countCode(result, SubstructureResult.unprocessed)).toBe(
-    idCodes.length,
-  );
+  expect(stepped).toBe(false);
 });
 
 test('unparsable idcodes are counted and the scan carries on', async () => {
   const mixed = idCodes.slice(0, 400);
   mixed[10] = '';
   mixed[300] = 'C1=CC=CC=C1';
-  const result = new Uint8Array(mixed.length);
-  const summary = await search(BENZENE, mixed, result, { interval: 1 });
+  const summary = await search(BENZENE, mixed, { interval: 1 });
 
   expect(summary.unparsable).toBe(2);
   expect(summary.processed).toBe(mixed.length);
-  expect(result[10]).toBe(SubstructureResult.unparsable);
-  expect(result[300]).toBe(SubstructureResult.unparsable);
+  expect(summary.result[10]).toBe(SubstructureResult.unparsable);
+  expect(summary.result[300]).toBe(SubstructureResult.unparsable);
 });
 
-test('the result buffer must match the mode', async () => {
-  await expect(
-    search(BENZENE, ['gCi@DDfZ@@'], new Uint8Array(1), { mode: 'similarity' }),
-  ).rejects.toThrow(
-    'similarity search writes a Float32Array, but result is a Uint8Array',
-  );
-  await expect(
-    search(BENZENE, ['gCi@DDfZ@@'], new Float32Array(1)),
-  ).rejects.toThrow(
-    'substructure search writes a Uint8Array, but result is a Float32Array',
-  );
-});
+test("the buffer is the mode's, and every step carries the one the summary carries", async () => {
+  const steps: SearchStep[] = [];
+  const substructure = await search(BENZENE, idCodes, {
+    interval: 1,
+    onStep: (step) => {
+      steps.push(step);
+    },
+  });
 
-test('a result buffer of the wrong length is refused', async () => {
-  await expect(
-    search(BENZENE, ['gCi@DDfZ@@'], new Uint8Array(4)),
-  ).rejects.toThrow('result must hold one entry per idcode');
+  expect(substructure.result).toBeInstanceOf(Uint8Array);
+  expect(substructure.result).toHaveLength(idCodes.length);
+
+  for (const step of steps) {
+    expect(step.result).toBe(substructure.result);
+  }
+
+  const similarity = await search(NAPHTHALENE, idCodes.slice(0, 20), {
+    mode: 'similarity',
+  });
+
+  expect(similarity.result).toBeInstanceOf(Float32Array);
+  expect(similarity.result).toHaveLength(20);
 });
 
 test('an empty array resolves without calling onStep', async () => {
   let called = false;
-  const summary = await search(BENZENE, [], new Uint8Array(0), {
+  const summary = await search(BENZENE, [], {
     onStep: () => {
       called = true;
     },
@@ -195,11 +192,11 @@ test('an empty array resolves without calling onStep', async () => {
 
 test('the similarity threshold decides what counts as matched', async () => {
   const slice = idCodes.slice(0, 120);
-  const lenient = await search(NAPHTHALENE, slice, new Float32Array(120), {
+  const lenient = await search(NAPHTHALENE, slice, {
     mode: 'similarity',
     threshold: 0.1,
   });
-  const strict = await search(NAPHTHALENE, slice, new Float32Array(120), {
+  const strict = await search(NAPHTHALENE, slice, {
     mode: 'similarity',
     threshold: 0.9,
   });

@@ -6,17 +6,17 @@ const SIMILARITY_DEFAULT = 5000;
 const CANDIDATE_SIZES = [1000, 5000, 10_000, 50_000, 100_000, 200_000];
 
 /**
- * How many workers to open with.
+ * How many workers to open with: 8, and never more than half the cores the machine reports.
  *
- * One fewer than the machine reports, and never more than 8. Workers share the page's renderer
- * process, so opening `hardwareConcurrency` of them leaves no core for the main thread: the progress
- * loop stops running, the page stops answering, and a browser under any other load kills the
- * renderer outright — which reads as "it crashed" and is the reason this is not the obvious number.
- * The cap matters for the same reason on a machine that reports 16 or 32.
+ * Workers share the page's renderer process, so opening `hardwareConcurrency` of them leaves no core
+ * for the main thread: the progress loop stops running, the page stops answering, and a browser
+ * under any other load kills the renderer outright — which reads as "it crashed" and is the reason
+ * this is not the obvious number. Half the cores leaves the other half to the main thread, the
+ * compositor and whatever else the browser is doing; the 8 caps it on a machine reporting 32.
  */
 export const defaultWorkers = Math.min(
   8,
-  Math.max(1, (globalThis.navigator?.hardwareConcurrency ?? 4) - 1),
+  Math.max(1, Math.floor((globalThis.navigator?.hardwareConcurrency ?? 4) / 2)),
 );
 
 /**
