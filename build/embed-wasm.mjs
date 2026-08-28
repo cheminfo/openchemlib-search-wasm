@@ -20,7 +20,9 @@ const outDir = join(root, 'wasm');
 
 await mkdir(outDir, { recursive: true });
 
-const wasm = await readFile(join(wasmDir, 'openchemlib.wasm'));
+// `openchemlib.opt.wasm` is TeaVM's module after the binaryen pass `scripts/build-wasm.mjs` runs;
+// the unoptimized `openchemlib.wasm` stays on disk as the benchmark's baseline and is never shipped.
+const wasm = await readFile(join(wasmDir, 'openchemlib.opt.wasm'));
 const gz = gzipSync(wasm, { level: 9 });
 const base64 = gz.toString('base64');
 

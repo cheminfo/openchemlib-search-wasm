@@ -15,7 +15,7 @@ import {
   printTable,
 } from './lib/report.js';
 
-import { ssSearch } from '#lib';
+import { substructureSearch } from '#lib';
 
 const DEFAULT_SIZE = 25_000;
 const DEFAULT_SAMPLES = 30;
@@ -43,7 +43,12 @@ const hits = new Map();
 // scanner called with both would see two call shapes at every site and be measured half-optimised
 // for each. A query is only a string value, so the six of them share a scanner without that risk.
 function scanWasm(query) {
-  hits.set(`${query.name} wasm`, countMatches(ssSearch(query.idCode, idCodes)));
+  hits.set(
+    `${query.name} wasm`,
+    countMatches(
+      substructureSearch(query.idCode, idCodes, { collect: false }).result,
+    ),
+  );
 }
 
 function scanJs(query) {

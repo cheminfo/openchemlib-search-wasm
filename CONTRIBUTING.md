@@ -8,7 +8,7 @@ java/pom.xml                          TeaVM WasmGC build; javac pulls OpenChemLi
 java/overlay/                         escape hatch, deliberately empty
 java/src/main/java/org/openchemlib/wasm/{Entry,Search}.java   the only Java we own
 openchemlib/                          git submodule, upstream OpenChemLib source
-scripts/build-wasm.mjs                finds a JDK, runs Maven
+scripts/build-wasm.mjs                finds a JDK, runs Maven, then binaryen
 build/embed-wasm.mjs                  gzip+base64 the wasm into wasm/, copy the TeaVM runtime
 wasm/                                 generated and COMMITTED — see below
 src/                                  the library
@@ -142,6 +142,38 @@ Two build gotchas:
   `maven-compiler-plugin` tracks staleness for those files alone, so a warm `target/` makes javac
   report "Nothing to compile" — the `-sourcepath` closure is never re-emitted and TeaVM quietly
   builds a facade-only wasm. `scripts/build-wasm.mjs` forces the clean; leave it there.
+
+## The binaryen pass
+
+`scripts/build-wasm.mjs` runs `wasm-opt -Os` over TeaVM's module and writes `openchemlib.opt.wasm`
+next to it; that is what `build/embed-wasm.mjs` ships. TeaVM already compiles at
+`optimizationLevel=FULL`, and binaryen still finds:
+
+|                            | TeaVM alone | after `wasm-opt -Os` |       |
+| -------------------------- | ----------: | -------------------: | ----: |
+| substructure, per molecule |     23.4 µs |              20.7 µs | 1.13x |
+| similarity, per molecule   |           — |                    — | 1.07x |
+| gzipped payload            |    120.8 KB |              95.2 KB |  −21% |
+
+Every answer is byte-identical to the unoptimized module — `node benchmark/wasmOpt.js` builds each
+variant, checks it against the baseline over 25,000 idcodes and six queries before timing it, and
+refuses to time one that disagrees.
+
+`-Os` rather than `-O3` because it measured both smaller and faster, in both run orders. Two options
+are deliberately absent:
+
+- **`--closed-world`** strips the module from 382 kB to 49 kB and the result traps on the first
+  call. TeaVM's JS interop hands references across the boundary, so the module is not closed.
+- **`-O4`** needs binaryen's Flatten pass, which does not handle the `br_on_*` instructions WasmGC
+  emits, and aborts.
+
+TeaVM writes no feature section, so wasm-opt has to be given the full `--enable-*` list or it
+refuses to parse the type section. The unoptimized `openchemlib.wasm` is left on disk on purpose: it
+is the baseline `benchmark/wasmOpt.js` compares against.
+
+wasm-opt is deterministic for a given binaryen version, so `wasm/` stays byte-reproducible and CI
+keeps diffing it — but **a `binaryen` bump changes those bytes**, exactly as a TeaVM bump does, and
+must be committed with the regenerated module.
 
 ## `strict=false`
 

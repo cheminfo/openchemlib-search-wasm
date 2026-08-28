@@ -52,7 +52,9 @@ let jsResult = new Float32Array(molecules);
 
 console.log('Same work? one scan per engine, similarities compared.\n');
 const wasmSeconds = seconds(() => {
-  wasmResult = similaritySearch(query.idCode, idCodes);
+  wasmResult = similaritySearch(query.idCode, idCodes, {
+    collect: false,
+  }).result;
 });
 const jsSeconds = seconds(() => {
   jsResult = similaritySearchJs(query.idCode, idCodes);
@@ -91,7 +93,9 @@ console.log(
 const computed = new Map();
 
 function scanWasm() {
-  wasmResult = similaritySearch(query.idCode, idCodes);
+  wasmResult = similaritySearch(query.idCode, idCodes, {
+    collect: false,
+  }).result;
   computed.set('wasm', `mean ${(total(wasmResult) / molecules).toFixed(4)}`);
 }
 

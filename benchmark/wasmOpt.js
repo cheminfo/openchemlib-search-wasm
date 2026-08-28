@@ -15,6 +15,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { parseArgs } from 'node:util';
 import { gzipSync } from 'node:zlib';
 
 import Benchmark from 'benchmark';
@@ -64,12 +65,20 @@ const FEATURES = [
   '--enable-extended-const',
 ];
 
-const VARIANTS = [
+const ALL_VARIANTS = [
   { name: 'baseline', passes: null },
   { name: '-O3', passes: ['-O3'] },
   { name: '-O3 --tnh', passes: ['-O3', '--traps-never-happen'] },
   { name: '-Os', passes: ['-Os'] },
 ];
+
+// A suite runs its cases in order, so a variant timed last has had the whole run to warm the
+// machine up. `--reverse` times them the other way round: a gap that survives both orders is the
+// module, a gap that flips with the order is drift.
+const { values: options } = parseArgs({
+  options: { reverse: { type: 'boolean', default: false } },
+});
+const VARIANTS = options.reverse ? ALL_VARIANTS.toReversed() : ALL_VARIANTS;
 
 if (!existsSync(baselineWasm)) {
   console.error(
@@ -89,6 +98,12 @@ const similarityCodes = idCodes.slice(0, SIMILARITY_SIZE);
 const query = queryByName('benzene');
 
 printHeader('Does a binaryen post-pass over TeaVM WasmGC output pay?', corpus);
+
+console.log(
+  `variants timed ${options.reverse ? 'last to first' : 'first to last'}; ` +
+    'the similarity corpus is the first 1000 of the sample, so its µs/molecule is not the\n' +
+    'corpus-wide figure the README quotes — only the ratio between variants is meant here.\n',
+);
 
 const baselineBytes = readFileSync(baselineWasm);
 const baselineGzip = gzipSync(baselineBytes, { level: 9 }).length;
@@ -131,8 +146,10 @@ console.log('');
 
 // Same answers? Every variant runs the whole substructure corpus and the similarity corpus, and its
 // answers are compared with the baseline's before anything is timed.
+// Always baseline first, whatever order the timing runs in: it is the reference the others are
+// compared against.
 const reference = { hits: null, similarity: null };
-for (const variant of VARIANTS) {
+for (const variant of ALL_VARIANTS) {
   const Search = engines.get(variant.name);
   const hits = new Uint8Array(molecules);
   const matched = Search.ssSearch(query.idCode, idCodes, hits, 0, molecules);

@@ -14,7 +14,7 @@ import {
   printTable,
 } from './lib/report.js';
 
-import { ssSearch } from '#lib';
+import { substructureSearch } from '#lib';
 
 const DEFAULT_SIZE = 25_000;
 const DEFAULT_SAMPLES = 30;
@@ -68,12 +68,16 @@ const jsResult = new Uint8Array(molecules);
 const computed = new Map();
 
 function parseWasm() {
-  const result = ssSearch(unmatchableIdCode, idCodes);
+  const result = substructureSearch(unmatchableIdCode, idCodes, {
+    collect: false,
+  }).result;
   computed.set('parse wasm', `${countMatches(result)} matches`);
 }
 
 function matchWasm(query, name) {
-  const result = ssSearch(query.idCode, idCodes);
+  const result = substructureSearch(query.idCode, idCodes, {
+    collect: false,
+  }).result;
   computed.set(name, `${count(countMatches(result))} matches`);
 }
 
@@ -211,7 +215,7 @@ console.log(
   'Read the openchemlib-js column as an upper bound. Every case here calls the same OpenChemLib\n' +
     'code and cannot be given a copy of its own, so a parse-only workload and a match workload in\n' +
     'one process slow each other down. The WASM column has no such neighbour and is unaffected: it\n' +
-    'matches ssSearch.js to within half a percent. The shape of the table holds — parse is half the\n' +
+    'matches substructureSearch.js to within half a percent. The shape of the table holds — parse is half the\n' +
     'work, and the half that is the slower of the two to speed up is what caps the whole scan below\n' +
     '2x — but both openchemlib-js ratios carry that inflation.',
 );

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import * as OCL from 'openchemlib';
 
 /**
- * The six queries the benchmark uses, as SMILES and as the idcodes `ssSearch` takes. They range from
+ * The six queries the benchmark uses, as SMILES and as the idcodes the searches take. They range from
  * a query that matches most of the corpus (benzene) to one that matches almost none (sulfonamide),
  * so a bug that biases the match rule in either direction shows up.
  */
@@ -38,7 +38,7 @@ export function readIdCodes(): string[] {
  * is the reference the WASM build must reproduce exactly.
  * @param idCodeQuery - The query, as an idcode.
  * @param idCodes - The molecules to test.
- * @returns One code per molecule, using the same 1 = match / 2 = no match encoding as `ssSearch`.
+ * @returns One code per molecule, using the same 1 = match / 2 = no match encoding as `substructureSearch`.
  */
 export function referenceSubstructure(
   idCodeQuery: string,

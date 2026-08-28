@@ -19,8 +19,12 @@
     "url": "https://github.com/cheminfo/openchemlib-search-wasm/issues"
   },
   "homepage": "https://github.com/cheminfo/openchemlib-search-wasm#readme",
+  "author": "Luc Patiny",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "benchmark": "node benchmark/ssSearch.js",
+    "benchmark": "node benchmark/substructureSearch.js",
     "benchmark-scan": "node benchmark/scan.mjs",
     "build": "npm run build-wasm && npm run build-embed",
     "build-embed": "node build/embed-wasm.mjs",

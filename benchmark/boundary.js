@@ -14,7 +14,7 @@ import {
   printTable,
 } from './lib/report.js';
 
-import { SubstructureResult, ssSearch } from '#lib';
+import { SubstructureResult, substructureSearch } from '#lib';
 
 // Big on purpose. Marshalling is copying, so it is memory-bound and its cost depends on how much of
 // the array is still in cache: the same measurement reads 0.19 µs per molecule at --size 5000 and
@@ -61,12 +61,16 @@ console.log(
 );
 
 function marshalStrings() {
-  const result = ssSearch(query.idCode, shaped);
+  const result = substructureSearch(query.idCode, shaped, {
+    collect: false,
+  }).result;
   computed.set('wasm: strings in, bytes out', unparsable(result));
 }
 
 function marshalNothing() {
-  const result = ssSearch(query.idCode, empty);
+  const result = substructureSearch(query.idCode, empty, {
+    collect: false,
+  }).result;
   computed.set('wasm: empty strings in, bytes out', unparsable(result));
 }
 
@@ -85,7 +89,9 @@ function marshalInJs() {
 }
 
 function wholeScan() {
-  const scanned = ssSearch(query.idCode, idCodes);
+  const scanned = substructureSearch(query.idCode, idCodes, {
+    collect: false,
+  }).result;
   let matches = 0;
   for (let i = 0; i < scanned.length; i++) {
     if (scanned[i] === SubstructureResult.match) matches++;

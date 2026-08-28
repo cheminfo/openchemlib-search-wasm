@@ -16,13 +16,42 @@
 //
 // Override with JAVA21_HOME to point at a specific JDK.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const REQUIRED_MAJOR = 21;
 const root = join(import.meta.dirname, '..');
 const pom = join(root, 'java', 'pom.xml');
 const wasm = join(root, 'java', 'target', 'wasm-gc', 'openchemlib.wasm');
+const optimized = join(
+  root,
+  'java',
+  'target',
+  'wasm-gc',
+  'openchemlib.opt.wasm',
+);
+const wasmOpt = join(root, 'node_modules', 'binaryen', 'bin', 'wasm-opt');
+
+// TeaVM writes no feature section, so wasm-opt has to be told every feature the module uses; with
+// the defaults it refuses to even parse the type section.
+const WASM_FEATURES = [
+  '--enable-gc',
+  '--enable-reference-types',
+  '--enable-exception-handling',
+  '--enable-bulk-memory',
+  '--enable-sign-ext',
+  '--enable-mutable-globals',
+  '--enable-nontrapping-float-to-int',
+  '--enable-multivalue',
+  '--enable-tail-call',
+  '--enable-extended-const',
+];
+
+// -Os, not -O3: it is both the smallest and, measured, the fastest of the three variants that
+// survive `node benchmark/wasmOpt.js`. `--closed-world` is not used — it strips the module to 49 kB
+// and the result traps on the first call, because TeaVM's JS interop hands references across the
+// boundary. `-O4` needs the Flatten pass, which does not handle WasmGC's br_on_* instructions.
+const WASM_OPT_PASSES = ['-Os'];
 
 const javaHome = resolveJavaHome();
 
@@ -49,6 +78,42 @@ if (result.status !== 0) process.exit(result.status ?? 1);
 if (!existsSync(wasm)) {
   console.error(`build-wasm: Maven succeeded but ${wasm} was not produced.`);
   process.exit(1);
+}
+
+optimize();
+
+/**
+ * Runs binaryen over TeaVM's output, writing `openchemlib.opt.wasm` next to it — the module
+ * `build/embed-wasm.mjs` ships. TeaVM's own FULL optimization leaves work on the table: the pass is
+ * worth 1.13x on a substructure scan, 1.07x on a similarity one and 21% of the gzipped payload,
+ * with byte-identical answers (`node benchmark/wasmOpt.js`).
+ *
+ * The raw module is deliberately left in place, so the benchmark still has an unoptimized baseline
+ * to compare against.
+ *
+ * wasm-opt is deterministic for a given binaryen version, so the build stays byte-reproducible and
+ * CI can keep diffing the committed `wasm/` — but a binaryen bump changes those bytes, exactly as a
+ * TeaVM bump does, and has to be committed with the regenerated module.
+ * @returns {void}
+ */
+function optimize() {
+  if (!existsSync(wasmOpt)) {
+    console.error(
+      'build-wasm: binaryen is missing. Run `npm ci` — it is a devDependency.',
+    );
+    process.exit(1);
+  }
+  const pass = spawnSync(
+    wasmOpt,
+    [...WASM_FEATURES, ...WASM_OPT_PASSES, wasm, '-o', optimized],
+    { stdio: 'inherit' },
+  );
+  if (pass.error) throw pass.error;
+  if (pass.status !== 0) process.exit(pass.status ?? 1);
+  console.log(
+    `build-wasm: wasm-opt ${WASM_OPT_PASSES.join(' ')} ` +
+      `${statSync(wasm).size} B -> ${statSync(optimized).size} B`,
+  );
 }
 
 // eslint-disable-next-line jsdoc/require-returns-check -- the no-JDK branch exits instead of returning

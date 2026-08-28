@@ -1,60 +1,21 @@
-import { buildIndexes, checkQuery, scanRange } from './scan.ts';
-import { INDEX_WORDS, SimilarityResult, SubstructureResult } from './types.ts';
+import { buildIndexes } from './scan.ts';
+import { INDEX_WORDS } from './types.ts';
 
-export { search } from './search.ts';
+export { substructureSearch } from './substructureSearch.ts';
+export { similaritySearch } from './similaritySearch.ts';
 export { INDEX_WORDS } from './types.ts';
 export type {
   ResultBuffer,
   SearchMode,
   SearchOptions,
+  SearchResult,
   SearchStep,
-  SearchSummary,
+  SimilaritySearchOptions,
+  SimilaritySearchResult,
+  SubstructureSearchOptions,
+  SubstructureSearchResult,
 } from './types.ts';
 export { SimilarityResult, SubstructureResult } from './types.ts';
-
-/**
- * Tests a query fragment against many molecules, returning one status byte per molecule.
- *
- * This is the blocking primitive: it returns when the whole array has been tested. For a scan that
- * reports progress, yields to the event loop and can stop early, use `search`.
- * @param idCodeQuery - The query, as an idcode. It is searched as a fragment whatever its own
- * fragment flag says, which is what `openchemlib`'s `SSSearcher` does with `setFragment(true)`.
- * @param idCodes - The molecules to test, as idcodes.
- * @returns One {@link SubstructureResult} code per idcode, in order.
- * @throws {Error} If the query cannot be parsed, or more than 100 idcodes cannot be.
- */
-export function ssSearch(idCodeQuery: string, idCodes: string[]): Uint8Array {
-  checkQuery('substructure', idCodeQuery);
-  const result = new Uint8Array(idCodes.length);
-  scanRange('substructure', idCodeQuery, idCodes, result, 0, idCodes.length);
-  return result;
-}
-
-/**
- * Computes the Tanimoto similarity of a query against many molecules on OpenChemLib's 512-bit
- * FragFp fingerprint, returning one float per molecule.
- *
- * This is the blocking primitive; `search` is the reporting, abortable version.
- *
- * The fingerprint has to be built from each idcode, and that is essentially the whole cost: 947 µs
- * per molecule against 0.03 µs for the comparison itself. When the caller already stores
- * fingerprints — as `openchemlib-sqlite` does — comparing those directly is about 30,000 times
- * cheaper than calling this. Use this when idcodes are all you have.
- * @param idCodeQuery - The query, as an idcode.
- * @param idCodes - The molecules to compare against, as idcodes.
- * @returns One Tanimoto coefficient in [0, 1] per idcode, or a {@link SimilarityResult} sentinel.
- * @throws {Error} If the query cannot be parsed, or more than 100 idcodes cannot be.
- */
-export function similaritySearch(
-  idCodeQuery: string,
-  idCodes: string[],
-): Float32Array {
-  checkQuery('similarity', idCodeQuery);
-  const result = new Float32Array(idCodes.length);
-  result.fill(SimilarityResult.unprocessed);
-  scanRange('similarity', idCodeQuery, idCodes, result, 0, idCodes.length);
-  return result;
-}
 
 /**
  * Builds the 512-bit FragFp fingerprint of one idcode, as sixteen 32-bit words.

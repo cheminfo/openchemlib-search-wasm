@@ -1,8 +1,7 @@
 /**
- * The status of one entry of an `ssSearch` result buffer.
+ * The status of one entry of a `substructureSearch` result buffer.
  *
- * `unprocessed` is what a `search` that stopped early leaves behind, and what every entry the
- * current step has not reached yet still holds.
+ * `unprocessed` is what a scan that stopped on `limit` or on `onStep` leaves behind.
  */
 export const SubstructureResult = Object.freeze({
   /** Not tested yet. */
@@ -32,82 +31,137 @@ export const SimilarityResult = Object.freeze({
 export type ResultBuffer = Uint8Array | Float32Array;
 
 /**
- * Which search `search` runs. The names are the ones `openchemlib-utils` and
- * `openchemlib-sqlite` already use for the same two searches.
+ * Which search to run. The names are the ones `openchemlib-utils` and `openchemlib-sqlite` already
+ * use for the same two searches.
  */
 export type SearchMode = 'substructure' | 'similarity';
 
-/** What landed since the previous step. */
+/** What a search has done so far, reported to `onStep`. */
 export interface SearchStep {
   /**
-   * The buffer being filled, so a caller can render matches while the scan is still running. It is
-   * the same buffer at every step, and the one the summary carries.
+   * The buffer being filled, so a caller can render as the scan runs. It is the same buffer at
+   * every step, and the one the result carries.
    */
   result: ResultBuffer;
-  /** First index written since the previous step. */
-  from: number;
-  /** One past the last index written since the previous step. */
-  to: number;
-  /** How many entries have been written in total. */
+  /** How many entries have been scanned. */
   processed: number;
   /** How many entries there are. */
   total: number;
-  /**
-   * Running count of matches: entries equal to {@link SubstructureResult.match} in `substructure`
-   * mode, entries at or above `threshold` in `similarity` mode.
-   */
+  /** How many of the scanned entries matched. */
   matched: number;
+  /** How many of them could not be parsed. */
+  unparsable: number;
   /** Milliseconds since the search started. */
   elapsed: number;
 }
 
-/** How a search ended. */
-export interface SearchSummary<Result extends ResultBuffer = ResultBuffer> {
+/** What both searches take. */
+export interface SearchOptions {
   /**
-   * One entry per idcode: a {@link SubstructureResult} code per byte in `substructure` mode, a
-   * Tanimoto coefficient in `similarity` mode. Entries past `processed` are left unprocessed when
-   * the search stopped early.
+   * Where the idcode sits in an entry, as a dot-separated jpath: `idCode`, `molecule.idCode`,
+   * `spectra.0.idCode`. Ignored when the entries are idcodes rather than objects.
+   * @default 'idCode'
    */
-  result: Result;
-  /** How many entries were written. Short of `total` when the search stopped early. */
-  processed: number;
-  /** How many of them matched. */
+  jpath?: string;
+  /**
+   * Called after each step with what has been scanned so far. Return `false` to stop the search.
+   *
+   * It is synchronous and the scan does not yield: chunking for a responsive main thread is the
+   * caller's to do, by slicing the array across calls or running this in a worker.
+   */
+  onStep?: (step: SearchStep) => boolean | void;
+  /**
+   * How many entries one step covers. Only meaningful alongside `onStep` or `limit`; without
+   * either, the whole array is scanned in a single call.
+   * @default 4096 for a substructure search, 128 for a similarity one — both about 100 ms
+   */
+  stepSize?: number;
+  /**
+   * Whether to collect `matches` and `indexes`. Turn it off to fill `result` alone, which is what a
+   * worker writing into a shared buffer wants: on a corpus that matches often, collecting allocates
+   * one array slot per hit for nothing.
+   * @default true
+   */
+  collect?: boolean;
+}
+
+export interface SubstructureSearchOptions extends SearchOptions {
+  /**
+   * Stop once this many matches have been found. The scan stops at the end of the step that reached
+   * it, so `matches` can overshoot by less than one step before being cut back to `limit`.
+   * @default Number.MAX_SAFE_INTEGER
+   */
+  limit?: number;
+}
+
+export interface SimilaritySearchOptions extends SearchOptions {
+  /**
+   * The Tanimoto coefficient at or above which an entry counts as a match.
+   * @default 0
+   */
+  threshold?: number;
+  /**
+   * Keep only the `limit` most similar entries. Unlike a substructure search this cannot stop the
+   * scan early — a better match may still be coming — so it only decides how many are kept.
+   * @default Number.MAX_SAFE_INTEGER
+   */
+  limit?: number;
+}
+
+/** What every search returns, whatever it computed. */
+export interface SearchResult<Entry> {
+  /**
+   * The entries that matched, in the order the search defines: input order for a substructure
+   * search, most similar first for a similarity one.
+   */
+  matches: Entry[];
+  /**
+   * Their positions in the input, aligned with `matches`. Cheaper than the entries to post back
+   * from a worker, whose caller already holds them.
+   */
+  indexes: number[];
+  /**
+   * How many of the scanned entries matched. Larger than `matches.length` when `limit` cut the
+   * list back, and the only count there is when `collect` is off.
+   */
   matched: number;
   /** How many idcodes could not be parsed. */
   unparsable: number;
+  /** How many entries were scanned. Short of `total` when the search stopped early. */
+  processed: number;
   /** How many entries there were. */
   total: number;
   /** How long the search took, in milliseconds. */
   elapsed: number;
-  /** True when `onStep` returned false before the end. */
+  /** True when `limit` or `onStep` stopped the scan before the end. */
   stopped: boolean;
 }
 
-export interface SearchOptions {
+/**
+ * `matches` and `indexes` are in **input order**, and `limit` therefore keeps the first matches
+ * rather than an arbitrary subset. A caller that has ordered its entries by a preference — cheapest
+ * first, lightest first — gets that preference back, which is what makes `limit` a first page
+ * rather than a sample.
+ */
+export interface SubstructureSearchResult<Entry> extends SearchResult<Entry> {
   /**
-   * Which search to run.
-   * @default 'substructure'
+   * One {@link SubstructureResult} code per entry, in input order. Entries past `processed` are
+   * left `unprocessed` when the search stopped early.
    */
-  mode?: SearchMode;
+  result: Uint8Array;
+}
+
+/** `matches` is ordered by descending similarity, so `limit` keeps the best. */
+export interface SimilaritySearchResult<Entry> extends SearchResult<Entry> {
   /**
-   * Milliseconds of scanning between `onStep` calls. The chunk size adapts to hit it, so the same
-   * value works for a substructure scan (~22 µs per molecule) and a similarity one (~947 µs).
-   * @default 100
+   * The Tanimoto coefficient of each entry of `matches`, in the same order — so the two arrays are
+   * read together. It is a separate array rather than a field on the entry because the entries are
+   * the caller's own objects: copying each one just to hang a number on it would allocate the whole
+   * result set a second time.
    */
-  interval?: number;
-  /**
-   * Called every `interval` milliseconds with what has landed since the last call, and once more
-   * when the scan ends. Return `false` to stop the search.
-   */
-  onStep?: (step: SearchStep) => boolean | void;
-  /** Aborting it rejects the returned promise with an `AbortError`. */
-  controller?: AbortController;
-  /**
-   * In `similarity` mode, the Tanimoto coefficient at or above which an entry counts as a match.
-   * Ignored in `substructure` mode.
-   * @default 0.8
-   */
-  threshold?: number;
+  similarities: Float32Array;
+  /** One coefficient per entry, in input order, with the {@link SimilarityResult} sentinels. */
+  result: Float32Array;
 }
 
 /** The shape TeaVM exports from the WasmGC module. Both take a half-open `[from, to)` range. */

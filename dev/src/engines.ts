@@ -25,9 +25,15 @@ export async function createScan(
   mode: Mode,
 ): Promise<ScanBatch> {
   if (engine === 'wasm') {
-    const { ssSearch, similaritySearch } = await import('#lib');
-    if (mode === 'substructure') return ssSearch;
-    return similaritySearch;
+    const { substructureSearch, similaritySearch } = await import('#lib');
+    // `collect: false`: the app renders from the buffer it copies into, so building a list of hits
+    // — a quarter of a million of them on a common query — would be measured and thrown away.
+    if (mode === 'substructure') {
+      return (query, idCodes) =>
+        substructureSearch(query, idCodes, { collect: false }).result;
+    }
+    return (query, idCodes) =>
+      similaritySearch(query, idCodes, { collect: false }).result;
   }
 
   const ocl = await import('openchemlib');
