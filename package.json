@@ -1,6 +1,6 @@
 {
   "name": "openchemlib-search-wasm",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Batch substructure and similarity search over idcodes, with OpenChemLib compiled to WebAssembly",
   "keywords": [
