@@ -24,6 +24,10 @@ await mkdir(outDir, { recursive: true });
 // the unoptimized `openchemlib.wasm` stays on disk as the benchmark's baseline and is never shipped.
 const wasm = await readFile(join(wasmDir, 'openchemlib.opt.wasm'));
 const gz = gzipSync(wasm, { level: 9 });
+// Byte 9 of the gzip header is the OS the stream was produced on — 0x13 on macOS, 0x03 on Linux —
+// so the same module embeds differently per machine and CI's rebuild-and-diff fails on a payload
+// whose deflate stream is identical. Stamp "unknown" instead; every decompressor ignores the field.
+gz[9] = 0xff;
 const base64 = gz.toString('base64');
 
 await writeFile(
