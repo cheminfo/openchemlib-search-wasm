@@ -18,7 +18,15 @@ const module =
   engine === 'wasm'
     ? await import('#lib')
     : await import('./lib/openchemlibJs.js');
-const scan = engine === 'wasm' ? module.ssSearch : module.ssSearchJs;
+// Both engines allocate and return their own buffer, so both are called the same way and the
+// A/B compares the same work. `collect: false` matters: benzene matches 62% of the corpus, and
+// building the match list would allocate a quarter of a million entries nothing here reads.
+const scan =
+  engine === 'wasm'
+    ? (idCodeQuery, idCodes) =>
+        module.substructureSearch(idCodeQuery, idCodes, { collect: false })
+          .result
+    : module.ssSearchJs;
 const loadMilliseconds = performance.now() - loadStart;
 
 const decodeStart = performance.now();
@@ -33,8 +41,8 @@ if (idCodes.length !== lineTo - lineFrom) {
   );
 }
 
-// The slice of the caller's buffer this worker owns. No index is written by any other worker, so
-// nothing here needs an atomic and the main thread can read the buffer while the scan runs.
+// The slice of the caller's buffer this worker owns, which it publishes its result into when the
+// scan returns. No index is written by any other worker, so nothing here needs an atomic.
 const output = new Uint8Array(result, lineFrom, idCodes.length);
 
 parentPort.postMessage({
@@ -47,7 +55,7 @@ parentPort.postMessage({
 parentPort.on('message', (message) => {
   if (message !== 'go') return;
   const start = performance.now();
-  scan(queryIdCode, idCodes, output);
+  output.set(scan(queryIdCode, idCodes));
   parentPort.postMessage({
     type: 'done',
     scanMilliseconds: performance.now() - start,
