@@ -30,6 +30,7 @@
     "build-embed": "node build/embed-wasm.mjs",
     "build-wasm": "node scripts/build-wasm.mjs",
     "check-types": "tsc --noEmit",
+    "check-wasm": "node scripts/check-wasm.mjs",
     "clean": "rimraf coverage lib",
     "dataset": "node scripts/build-dataset.mjs",
     "dev": "vite dev dev",

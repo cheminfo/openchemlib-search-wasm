@@ -73,9 +73,14 @@ jobs:
       - run: npm run build
       # The TeaVM build is byte-reproducible, so a difference here means wasm/ was
       # not regenerated after the Java sources or the submodule pin changed.
+      # data.js is compared by the module it decompresses to, not by its own bytes,
+      # which depend on the Node version that gzipped it. The rest of wasm/ is plain
+      # text and is compared as it is.
       - name: The committed module matches the sources
+        run: npm run check-wasm
+      - name: The committed runtime matches the sources
         run: |
-          git diff --exit-code -- wasm || {
+          git diff --exit-code -- wasm/runtime.js wasm/runtime.d.ts wasm/data.d.ts || {
             echo "::error::wasm/ is stale — run npm run build and commit the result"
             exit 1
           }

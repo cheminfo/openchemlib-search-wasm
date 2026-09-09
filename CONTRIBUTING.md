@@ -9,6 +9,7 @@ java/overlay/                         escape hatch, deliberately empty
 java/src/main/java/org/openchemlib/wasm/{Entry,Search}.java   the only Java we own
 openchemlib/                          git submodule, upstream OpenChemLib source
 scripts/build-wasm.mjs                finds a JDK, runs Maven, then binaryen
+scripts/check-wasm.mjs                compares the committed module with the one the sources produce
 build/embed-wasm.mjs                  gzip+base64 the wasm into wasm/, copy the TeaVM runtime
 wasm/                                 generated and COMMITTED — see below
 src/                                  the library
@@ -34,6 +35,13 @@ git add wasm       # commit the regenerated module with the change that caused i
 
 The TeaVM build is byte-reproducible, so CI rebuilds it and fails if the committed `wasm/` differs
 from what the sources produce. Forgetting the rebuild is caught, not shipped.
+
+`npm run check-wasm` is that comparison. It compares the module `wasm/data.js` decompresses to
+rather than the file itself, because the `.wasm` is identical across machines and JDK vendors but
+the gzip around it is not: Node 24 ships zlib-ng and Node 26 a different zlib, so the two embed the
+same module as different bytes. Run it after a rebuild to see whether anything actually changed —
+when it says the module is up to date, `git checkout -- wasm/data.js` instead of committing the
+reshuffled payload.
 
 `scripts/build-wasm.mjs` locates the JDK itself rather than trusting the ambient `JAVA_HOME`. On
 macOS `/usr/libexec/java_home -v 21` silently returns whatever JDK happens to be registered when no
