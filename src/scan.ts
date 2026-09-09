@@ -139,3 +139,32 @@ export function buildIndexes(
 ): number {
   return Search.getIndexes(idCodes, result, from, to);
 }
+
+/**
+ * Hashes `idCodes[from .. to)` into `result`, one no-stereo tautomer hash per molecule.
+ *
+ * Like the fingerprints and unlike the searches, a malformed idcode needs no recovery here: the
+ * WASM side writes `0` for one it cannot read and carries on, and `0` is also what OpenChemLib
+ * returns for a molecule it cannot canonize, so the two failures are reported the same way.
+ * @param idCodes - The molecules to hash.
+ * @param result - The caller's buffer, `idCodes.length` entries long.
+ * @param largestFragmentOnly - Whether to strip and neutralize down to the largest fragment first.
+ * @param from - The first index to hash.
+ * @param to - One past the last index to hash.
+ * @returns How many molecules were hashed.
+ */
+export function buildNoStereoTautomerHashes(
+  idCodes: string[],
+  result: BigInt64Array,
+  largestFragmentOnly: boolean,
+  from: number,
+  to: number,
+): number {
+  return Search.getNoStereoTautomerHashes(
+    idCodes,
+    result,
+    largestFragmentOnly,
+    from,
+    to,
+  );
+}

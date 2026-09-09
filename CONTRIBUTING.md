@@ -59,8 +59,8 @@ npm run test-only
 Commit the submodule pointer and the regenerated `wasm/`. That is the entire procedure.
 
 It is that short because **OpenChemLib is neither vendored nor patched**. `java/pom.xml` compiles
-only `org/openchemlib/wasm/*.java`; javac's `-sourcepath` pulls the reachable closure — 44
-OpenChemLib classes, 56 class files with the nested ones — straight out of the submodule working
+only `org/openchemlib/wasm/*.java`; javac's `-sourcepath` pulls the reachable closure — 47
+OpenChemLib classes, 62 class files with the nested ones — straight out of the submodule working
 tree, and TeaVM's dead-code elimination compiles that same
 closure. There is no copy to regenerate and no diff to review.
 
@@ -107,6 +107,12 @@ and `AromaticityResolver` among them — with no signature change at all. Those 
 out to change nothing (identical digests over 20,000 idcodes), which is exactly what the tests are
 there to establish.
 
+`openchemlib-js` exposes `CanonizerUtil.getIDCode` but not the hash built from it, so
+`noStereoTautomerHash.test.ts` transcribes OpenChemLib's `StrongHasher` and hashes the reference
+idcode itself. Writing it a second way is what makes that comparison a cross-check rather than a
+restatement. Three of the 250 fixture molecules have so many tautomeric sites that OpenChemLib
+abandons the enumeration; both builds must abandon it identically, and they do.
+
 The highest-value assertion is `getIndexes.test.ts`'s "every word matches openchemlib-js
 createIndex", which compares all sixteen words of the 512-bit FragFp against `openchemlib-js` over
 250 idcodes. Those words are the 512 substructure keys applied: they define every similarity value
@@ -132,6 +138,8 @@ its behaviour is a consequence of a build flag, not an accident.
   is why similarity results are 32-bit.
 - TeaVM has a real `float`; GWT emulates `float` as `double`. A float-returning method yields e.g.
   `0.33333334`.
+- A Java `long` reaches JS through `org.teavm.jso.typedarrays.BigInt64Array`, whose `set(int, long)`
+  writes one entry — so a 64-bit hash crosses the boundary whole, with no lo/hi word splitting.
 
 Two build gotchas:
 

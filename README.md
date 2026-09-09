@@ -29,6 +29,10 @@ similaritySearch<Entry>(idCodeQuery: string, entries: Entry[],
 // the 512-bit FragFp, for a fingerprint table: sixteen 32-bit words per molecule
 getIndex(idCode: string): Int32Array;
 getIndexes(idCodes: string[]): Int32Array[];
+
+// the 64-bit hash a molecule keeps across its tautomers and stereoisomers
+getNoStereoTautomerHash(idCode: string, options?: TautomerHashOptions): bigint;
+getNoStereoTautomerHashes(idCodes: string[], options?: TautomerHashOptions): BigInt64Array;
 ```
 
 **Give it your objects and it gives them back.** An entry is an idcode or anything carrying one — a
@@ -137,6 +141,35 @@ const columns = new BigInt64Array(index.buffer, index.byteOffset, 8);
 ```
 
 This is the expensive half of importing a library, and where the biggest speedup is.
+
+## Tautomer hashes
+
+`getNoStereoTautomerHash` is OpenChemLib's `CanonizerUtil.getNoStereoTautomerHash`: the molecule
+stripped of stereo information, reduced to its generic tautomer, canonized, and that idcode run
+through OpenChemLib's 64-bit hash. Every tautomer of a structure and every stereoisomer of it give
+the same value, so it is the column to key on when "the same compound" means the same constitution
+rather than the same drawing.
+
+```js
+import { getNoStereoTautomerHash } from 'openchemlib-search-wasm';
+
+// pentan-3-one drawn as the keto and as the enol form
+getNoStereoTautomerHash('gGQ@@drmT@@') ===
+  getNoStereoTautomerHash('gGQ@@drsT@@'); // true
+```
+
+It is a signed 64-bit integer, which is exactly what an SQLite `INTEGER` column stores and indexes,
+so a `BigInt64Array` of hashes goes straight into one. An idcode that will not parse, or a molecule
+OpenChemLib cannot canonize, gets `NO_HASH` (`0n`).
+
+Pass `{ largestFragmentOnly: true }` to strip everything but the largest fragment and neutralize it
+first, so a salt hashes as its parent structure.
+
+The hash is the same value any other OpenChemLib build computes — the tests check all 250 fixture
+molecules against `openchemlib` — and costs around 130 µs against 520 µs there. That cost is driven
+by how many tautomeric sites a molecule has and is nothing like uniform: a molecule with a great
+many can take the better part of a second before OpenChemLib abandons the enumeration, so hash a
+library in a worker rather than on the main thread.
 
 ## What you actually win
 
