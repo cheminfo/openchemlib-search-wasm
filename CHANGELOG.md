@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/cheminfo/openchemlib-search-wasm/compare/v1.0.0...v1.1.0) (2026-09-09)
+
+
+### Features
+
+* add getNoStereoTautomerHash and getNoStereoTautomerHashes ([cc6b6b9](https://github.com/cheminfo/openchemlib-search-wasm/commit/cc6b6b9c9a64b0a16683aec74fb782df55571593))
+
 ## 1.0.0 (2026-08-28)
 
 
