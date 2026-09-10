@@ -168,3 +168,31 @@ export function buildNoStereoTautomerHashes(
     to,
   );
 }
+
+/**
+ * Hashes `idCodes[from .. to)` into `result`, one no-stereo hash per molecule.
+ *
+ * Fails the same way {@link buildNoStereoTautomerHashes} does: `0` for an idcode the WASM side
+ * cannot read and for a molecule OpenChemLib cannot canonize.
+ * @param idCodes - The molecules to hash.
+ * @param result - The caller's buffer, `idCodes.length` entries long.
+ * @param largestFragmentOnly - Whether to strip and neutralize down to the largest fragment first.
+ * @param from - The first index to hash.
+ * @param to - One past the last index to hash.
+ * @returns How many molecules were hashed.
+ */
+export function buildNoStereoHashes(
+  idCodes: string[],
+  result: BigInt64Array,
+  largestFragmentOnly: boolean,
+  from: number,
+  to: number,
+): number {
+  return Search.getNoStereoHashes(
+    idCodes,
+    result,
+    largestFragmentOnly,
+    from,
+    to,
+  );
+}

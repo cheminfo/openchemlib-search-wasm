@@ -198,14 +198,22 @@ export interface OCLSearch {
       from: number,
       to: number,
     ) => number;
+    /** Returns how many molecules in the range were hashed. */
+    getNoStereoHashes: (
+      idCodes: string[],
+      result: BigInt64Array,
+      largestFragmentOnly: boolean,
+      from: number,
+      to: number,
+    ) => number;
   };
 }
 
 /** How many 32-bit words one molecule's FragFp fingerprint occupies. */
 export const INDEX_WORDS = 16;
 
-/** What the no-stereo tautomer hash functions take. */
-export interface TautomerHashOptions {
+/** What every hash function takes. */
+export interface HashOptions {
   /**
    * Whether to reduce the molecule to its largest fragment and neutralize it before hashing, so a
    * salt hashes as its parent structure and a hydrochloride as its free base. Off by default, which
@@ -214,6 +222,9 @@ export interface TautomerHashOptions {
    */
   largestFragmentOnly?: boolean;
 }
+
+/** {@link HashOptions} under the name the tautomer hashes introduced it with. */
+export type TautomerHashOptions = HashOptions;
 
 /**
  * The hash of a molecule that has none: its idcode could not be parsed, or OpenChemLib could not

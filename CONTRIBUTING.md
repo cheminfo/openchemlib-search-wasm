@@ -115,11 +115,18 @@ and `AromaticityResolver` among them — with no signature change at all. Those 
 out to change nothing (identical digests over 20,000 idcodes), which is exactly what the tests are
 there to establish.
 
-`openchemlib-js` exposes `CanonizerUtil.getIDCode` but not the hash built from it, so
-`noStereoTautomerHash.test.ts` transcribes OpenChemLib's `StrongHasher` and hashes the reference
-idcode itself. Writing it a second way is what makes that comparison a cross-check rather than a
-restatement. Three of the 250 fixture molecules have so many tautomeric sites that OpenChemLib
+`openchemlib-js` exposes `CanonizerUtil.getIDCode` but not the hash built from it, so `fixture.ts`
+transcribes OpenChemLib's `StrongHasher` and the two hash tests hash the reference idcode themselves.
+Writing it a second way is what makes those comparisons cross-checks rather than restatements. Three
+of the 250 fixture molecules the tautomer test covers have so many tautomeric sites that OpenChemLib
 abandons the enumeration; both builds must abandon it identically, and they do.
+
+The no-stereo hash is cheap enough that `noStereoHash.test.ts` cross-checks the whole fixture rather
+than a slice. Its chemistry assertions are worth reading before adding one: a molecule parsed from an
+idcode has no coordinates, so stripping stereo information from a molecule that carried some and
+canonizing one that never had any do **not** converge — `CC=CC` and `C/C=C/C` hash differently, in
+both builds. The cross-check is what establishes correctness; a hand-reasoned chemistry expectation
+is not.
 
 The highest-value assertion is `getIndexes.test.ts`'s "every word matches openchemlib-js
 createIndex", which compares all sixteen words of the 512-bit FragFp against `openchemlib-js` over

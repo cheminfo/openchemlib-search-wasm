@@ -15,10 +15,10 @@ import org.teavm.jso.typedarrays.Uint8Array;
 
 /**
  * The whole public surface of openchemlib-search-wasm: batch substructure search, batch similarity
- * search, batch FragFp fingerprinting and batch tautomer hashing over a range of an array of
+ * search, batch FragFp fingerprinting and batch structure hashing over a range of an array of
  * idcodes.
  *
- * <p>All four write into a caller-owned JS typed array as they go, so a caller that backs it with a
+ * <p>All five write into a caller-owned JS typed array as they go, so a caller that backs it with a
  * {@code SharedArrayBuffer} and splits the idcodes across workers can render progress while the scan
  * runs. Each index is written by exactly one worker, so no atomics are needed.
  *
@@ -227,6 +227,53 @@ public final class Search {
       long hash =
           parse(parser, molecule, idCodes.get(i).stringValue())
               ? CanonizerUtil.getNoStereoTautomerHash(molecule, largestFragmentOnly)
+              : 0;
+      if (hash != 0) {
+        hashed++;
+      }
+      result.set(i, hash);
+    }
+    return hashed;
+  }
+
+  /**
+   * Hashes {@code idCodes[from .. to)} to the 64-bit hash OpenChemLib identifies a molecule by up to
+   * stereochemistry, one hash per molecule.
+   *
+   * <p>Every stereoisomer of a structure hashes to the same value, and nothing else does: unlike
+   * {@link #getNoStereoTautomerHashes} the tautomers are kept apart, so the keto and the enol form
+   * of one compound hash differently. It is the hash to key on when a record's stereochemistry is
+   * unreliable but the bonds it was drawn with are not.
+   *
+   * <p>It is OpenChemLib's own {@code CanonizerUtil.getNoStereoHash}: the molecule is stripped of
+   * stereo information, canonized, and that idcode run through OpenChemLib's 64-bit StrongHasher.
+   * The value therefore matches what any other OpenChemLib build computes for the same molecule, and
+   * it is a signed 64-bit integer — exactly what an SQLite {@code INTEGER} column holds and indexes.
+   *
+   * @param idCodes the molecules to hash
+   * @param result written as the scan advances, one hash per molecule. Indexed by the molecule's
+   *     position in {@code idCodes}, not by its position in the range. A molecule whose idcode will
+   *     not parse, or that OpenChemLib cannot canonize, gets 0.
+   * @param largestFragmentOnly whether to first strip all but the largest fragment and neutralize
+   *     it, so a salt hashes as its parent structure
+   * @param from the first index to hash
+   * @param to one past the last index to hash
+   * @return how many molecules in the range were hashed
+   */
+  @JSExport
+  public static int getNoStereoHashes(
+      JSArrayReader<JSString> idCodes,
+      BigInt64Array result,
+      boolean largestFragmentOnly,
+      int from,
+      int to) {
+    IDCodeParserWithoutCoordinateInvention parser = new IDCodeParserWithoutCoordinateInvention();
+    StereoMolecule molecule = new StereoMolecule();
+    int hashed = 0;
+    for (int i = from; i < to; i++) {
+      long hash =
+          parse(parser, molecule, idCodes.get(i).stringValue())
+              ? CanonizerUtil.getNoStereoHash(molecule, largestFragmentOnly)
               : 0;
       if (hash != 0) {
         hashed++;
