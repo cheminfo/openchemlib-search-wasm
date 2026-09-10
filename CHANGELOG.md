@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/cheminfo/openchemlib-search-wasm/compare/v1.1.0...v1.2.0) (2026-09-10)
+
+
+### Features
+
+* add getNoStereoHash and getNoStereoHashes ([#3](https://github.com/cheminfo/openchemlib-search-wasm/issues/3)) ([f9aec63](https://github.com/cheminfo/openchemlib-search-wasm/commit/f9aec63116d24640085662ba0859cd415ffed481))
+
 ## [1.1.0](https://github.com/cheminfo/openchemlib-search-wasm/compare/v1.0.0...v1.1.0) (2026-09-09)
 
 
