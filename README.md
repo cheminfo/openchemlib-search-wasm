@@ -1,7 +1,7 @@
 # openchemlib-search-wasm
 
-Batch substructure search, batch similarity search and FragFp fingerprints over arrays of
-OpenChemLib idcodes — with OpenChemLib compiled to WebAssembly.
+Batch substructure search, batch similarity search, FragFp fingerprints and identity hashes over
+arrays of OpenChemLib idcodes — with OpenChemLib compiled to WebAssembly.
 
 ## Install
 
@@ -30,9 +30,13 @@ similaritySearch<Entry>(idCodeQuery: string, entries: Entry[],
 getIndex(idCode: string): Int32Array;
 getIndexes(idCodes: string[]): Int32Array[];
 
-// the 64-bit hash a molecule keeps across its tautomers and stereoisomers
-getNoStereoTautomerHash(idCode: string, options?: TautomerHashOptions): bigint;
-getNoStereoTautomerHashes(idCodes: string[], options?: TautomerHashOptions): BigInt64Array;
+// the 64-bit hash a molecule keeps across its stereoisomers
+getNoStereoHash(idCode: string, options?: HashOptions): bigint;
+getNoStereoHashes(idCodes: string[], options?: HashOptions): BigInt64Array;
+
+// the same, across its tautomers as well
+getNoStereoTautomerHash(idCode: string, options?: HashOptions): bigint;
+getNoStereoTautomerHashes(idCodes: string[], options?: HashOptions): BigInt64Array;
 ```
 
 **Give it your objects and it gives them back.** An entry is an idcode or anything carrying one — a
@@ -142,34 +146,64 @@ const columns = new BigInt64Array(index.buffer, index.byteOffset, 8);
 
 This is the expensive half of importing a library, and where the biggest speedup is.
 
-## Tautomer hashes
+## Identity hashes
 
-`getNoStereoTautomerHash` is OpenChemLib's `CanonizerUtil.getNoStereoTautomerHash`: the molecule
-stripped of stereo information, reduced to its generic tautomer, canonized, and that idcode run
-through OpenChemLib's 64-bit hash. Every tautomer of a structure and every stereoisomer of it give
-the same value, so it is the column to key on when "the same compound" means the same constitution
-rather than the same drawing.
+Two hashes, for the two things "the same compound" usually means. Both are OpenChemLib's own —
+`CanonizerUtil.getNoStereoHash` and `CanonizerUtil.getNoStereoTautomerHash` — so both are the value
+any other OpenChemLib build computes, and the tests check the fixture molecules against
+`openchemlib` to prove it.
+
+|                           | drops                        | keeps apart   |
+| ------------------------- | ---------------------------- | ------------- |
+| `getNoStereoHash`         | stereochemistry              | the tautomers |
+| `getNoStereoTautomerHash` | stereochemistry, tautomerism | —             |
+
+`getNoStereoHash` strips the molecule of stereo information, canonizes it, and runs that idcode
+through OpenChemLib's 64-bit hash. Both enantiomers of a centre, and both isomers of a double bond,
+give the same value — the one to key on when a record's stereochemistry is unreliable but the bonds
+it was drawn with are not.
+
+`getNoStereoTautomerHash` reduces the molecule to its generic tautomer first, so the keto and the
+enol form of a compound land on the same key as well — the one to key on when "the same compound"
+means the same constitution rather than the same drawing.
 
 ```js
-import { getNoStereoTautomerHash } from 'openchemlib-search-wasm';
+import {
+  getNoStereoHash,
+  getNoStereoTautomerHash,
+} from 'openchemlib-search-wasm';
+
+// both enantiomers of 2-chlorobutane
+getNoStereoHash('gJPHADILuTb@') === getNoStereoHash('gJPHADILuTd@'); // true
 
 // pentan-3-one drawn as the keto and as the enol form
+getNoStereoHash('gGQ@@drmT@@') === getNoStereoHash('gGQ@@drsT@@'); // false
 getNoStereoTautomerHash('gGQ@@drmT@@') ===
   getNoStereoTautomerHash('gGQ@@drsT@@'); // true
 ```
 
-It is a signed 64-bit integer, which is exactly what an SQLite `INTEGER` column stores and indexes,
-so a `BigInt64Array` of hashes goes straight into one. An idcode that will not parse, or a molecule
-OpenChemLib cannot canonize, gets `NO_HASH` (`0n`).
+Both are signed 64-bit integers, which is exactly what an SQLite `INTEGER` column stores and
+indexes, so a `BigInt64Array` of hashes goes straight into one. An idcode that will not parse, or a
+molecule OpenChemLib cannot canonize, gets `NO_HASH` (`0n`).
 
-Pass `{ largestFragmentOnly: true }` to strip everything but the largest fragment and neutralize it
-first, so a salt hashes as its parent structure.
+Both take `{ largestFragmentOnly: true }` to strip everything but the largest fragment and
+neutralize it first, so a salt hashes as its parent structure.
 
-The hash is the same value any other OpenChemLib build computes — the tests check all 250 fixture
-molecules against `openchemlib` — and costs around 130 µs against 520 µs there. That cost is driven
-by how many tautomeric sites a molecule has and is nothing like uniform: a molecule with a great
-many can take the better part of a second before OpenChemLib abandons the enumeration, so hash a
-library in a worker rather than on the main thread.
+### What they cost
+
+On ordinary drug-like molecules the no-stereo hash costs about 52 µs and the tautomer one about
+145 µs. Want both columns? Call both — the two share the idcode parse and the stereo strip, but that
+shared work is worth under 20 µs and is not worth an API to save.
+
+The tautomer cost is nothing like uniform, though, and that changes the picture entirely on a real
+library. It is driven by how many tautomeric sites a molecule has, and a molecule with a great many
+can take the better part of a second before OpenChemLib abandons the enumeration. Roughly one in ten
+of the test fixture is such a molecule, and they drag the mean to 29.6 ms — at which point the
+no-stereo hash is 0.2% of the tautomer one.
+
+Two things follow. Hash a library **in a worker**, never on the main thread. And if you only need
+identity up to stereochemistry, `getNoStereoHash` is the one to reach for: it is the hash whose cost
+you can predict.
 
 ## What you actually win
 

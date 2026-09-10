@@ -112,3 +112,56 @@ export function firstDifference(
   }
   return -1;
 }
+
+const MASK_64 = (1n << 64n) - 1n;
+const HSTART = 0xbb40e64da205b064n;
+const HMULT = 7664345821815920749n;
+const BYTE_TABLE = buildByteTable();
+
+/**
+ * `openchemlib-js` exposes `CanonizerUtil.getIDCode` but not the hash built from it, so the hash
+ * tests hash that idcode here. This is OpenChemLib's `StrongHasher.hash` transcribed, and having it
+ * written a second way is what makes those comparisons a real cross-check.
+ * @param text - The idcode to hash.
+ * @returns Its 64-bit hash, signed, as a `BigInt64Array` entry holds it.
+ */
+export function strongHash(text: string): bigint {
+  let h = HSTART;
+  for (let i = text.length - 1; i >= 0; i--) {
+    const character = BigInt(text.codePointAt(i) as number);
+    h =
+      ((h * HMULT) & MASK_64) ^
+      (BYTE_TABLE[Number(character & 0xffn)] as bigint);
+    h =
+      ((h * HMULT) & MASK_64) ^
+      (BYTE_TABLE[Number((character >> 8n) & 0xffn)] as bigint);
+  }
+  return BigInt.asIntN(64, h);
+}
+
+/**
+ * OpenChemLib's `CanonizerUtil.StrongHasher` byte table, built the same way the Java does.
+ * @returns The 256 seeds, as unsigned 64-bit values.
+ */
+function buildByteTable(): bigint[] {
+  const table = new Array<bigint>(256);
+  let h = 0x544b2fbacaaf1684n;
+  for (let i = 0; i < 256; i++) {
+    for (let j = 0; j < 31; j++) {
+      h = ((h >> 7n) ^ h) & MASK_64;
+      h = ((h << 11n) ^ h) & MASK_64;
+      h = ((h >> 10n) ^ h) & MASK_64;
+    }
+    table[i] = h;
+  }
+  return table;
+}
+
+/**
+ * The idcode of a SMILES, so the hash tests read as structures rather than as opaque strings.
+ * @param smiles - The molecule.
+ * @returns Its idcode.
+ */
+export function fromSmiles(smiles: string): string {
+  return OCL.Molecule.fromSmiles(smiles).getIDCode();
+}

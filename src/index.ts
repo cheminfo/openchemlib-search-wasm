@@ -1,11 +1,16 @@
-import { buildIndexes, buildNoStereoTautomerHashes } from './scan.ts';
-import type { TautomerHashOptions } from './types.ts';
+import {
+  buildIndexes,
+  buildNoStereoHashes,
+  buildNoStereoTautomerHashes,
+} from './scan.ts';
+import type { HashOptions } from './types.ts';
 import { INDEX_WORDS } from './types.ts';
 
 export { substructureSearch } from './substructureSearch.ts';
 export { similaritySearch } from './similaritySearch.ts';
 export { INDEX_WORDS, NO_HASH } from './types.ts';
 export type {
+  HashOptions,
   ResultBuffer,
   SearchMode,
   SearchOptions,
@@ -86,13 +91,13 @@ export function getIndexes(idCodes: string[]): Int32Array[] {
  * insert.run(entryId, getNoStereoTautomerHash(idCode));
  * ```
  * @param idCode - The molecule to hash, as an idcode.
- * @param options - See {@link TautomerHashOptions}.
+ * @param options - See {@link HashOptions}.
  * @returns Its hash, or `NO_HASH` (`0n`) for an idcode that will not parse or a molecule
  * OpenChemLib cannot canonize.
  */
 export function getNoStereoTautomerHash(
   idCode: string,
-  options: TautomerHashOptions = {},
+  options: HashOptions = {},
 ): bigint {
   const { largestFragmentOnly = false } = options;
   const result = new BigInt64Array(1);
@@ -113,13 +118,13 @@ export function getNoStereoTautomerHash(
  * The hashes come back in one `BigInt64Array` rather than one value per molecule, so a table of
  * them costs a single allocation and can be written straight into a column.
  * @param idCodes - The molecules to hash, as idcodes.
- * @param options - See {@link TautomerHashOptions}.
+ * @param options - See {@link HashOptions}.
  * @returns One hash per idcode, in order, with `NO_HASH` (`0n`) for each one that could not be
  * hashed.
  */
 export function getNoStereoTautomerHashes(
   idCodes: string[],
-  options: TautomerHashOptions = {},
+  options: HashOptions = {},
 ): BigInt64Array {
   const { largestFragmentOnly = false } = options;
   const result = new BigInt64Array(idCodes.length);
@@ -130,5 +135,60 @@ export function getNoStereoTautomerHashes(
     0,
     idCodes.length,
   );
+  return result;
+}
+
+/**
+ * Hashes one idcode to the 64-bit value OpenChemLib identifies a molecule by up to stereochemistry.
+ *
+ * Every stereoisomer of a structure gives the same hash, and nothing else does: unlike
+ * {@link getNoStereoTautomerHash} the tautomers stay apart, so the keto and the enol form of a
+ * compound key differently. That makes it the narrower of the two identity columns — the one to use
+ * when a record's stereo centres are unreliable but the bonds it was drawn with are not.
+ *
+ * It is OpenChemLib's own `CanonizerUtil.getNoStereoHash`, so the value matches what any other
+ * OpenChemLib build computes, and it is a signed 64-bit integer — what an SQLite `INTEGER` column
+ * stores and indexes directly:
+ *
+ * ```js
+ * insert.run(entryId, getNoStereoHash(idCode));
+ * ```
+ * @param idCode - The molecule to hash, as an idcode.
+ * @param options - See {@link HashOptions}.
+ * @returns Its hash, or `NO_HASH` (`0n`) for an idcode that will not parse or a molecule
+ * OpenChemLib cannot canonize.
+ */
+export function getNoStereoHash(
+  idCode: string,
+  options: HashOptions = {},
+): bigint {
+  const { largestFragmentOnly = false } = options;
+  const result = new BigInt64Array(1);
+  buildNoStereoHashes([idCode], result, largestFragmentOnly, 0, 1);
+  return result[0] as bigint;
+}
+
+/**
+ * Hashes every idcode to its no-stereo hash, one 64-bit value each.
+ *
+ * See {@link getNoStereoHash} for what the hash identifies. It costs a fraction of
+ * {@link getNoStereoTautomerHashes} because it canonizes the molecule itself instead of enumerating
+ * its tautomers, and its cost is even across a library rather than driven by how tautomeric each
+ * molecule happens to be.
+ *
+ * The hashes come back in one `BigInt64Array` rather than one value per molecule, so a table of
+ * them costs a single allocation and can be written straight into a column.
+ * @param idCodes - The molecules to hash, as idcodes.
+ * @param options - See {@link HashOptions}.
+ * @returns One hash per idcode, in order, with `NO_HASH` (`0n`) for each one that could not be
+ * hashed.
+ */
+export function getNoStereoHashes(
+  idCodes: string[],
+  options: HashOptions = {},
+): BigInt64Array {
+  const { largestFragmentOnly = false } = options;
+  const result = new BigInt64Array(idCodes.length);
+  buildNoStereoHashes(idCodes, result, largestFragmentOnly, 0, idCodes.length);
   return result;
 }
