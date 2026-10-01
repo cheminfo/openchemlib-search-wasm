@@ -6,13 +6,19 @@ import {
   buildNoStereoTautomerIdCodes,
 } from './scan.ts';
 import type { HashOptions } from './types.ts';
-import { INDEX_WORDS, NO_ID_CODE } from './types.ts';
+import { DEFAULT_MAX_TAUTOMERS, INDEX_WORDS, NO_ID_CODE } from './types.ts';
 
 export { substructureSearch } from './substructureSearch.ts';
 export { setLogHandler } from './wasm/log.ts';
 export { hashToHex, hexToHash } from './hex.ts';
+export { strongHash } from './strongHash.ts';
 export { similaritySearch } from './similaritySearch.ts';
-export { INDEX_WORDS, NO_HASH, NO_ID_CODE } from './types.ts';
+export {
+  DEFAULT_MAX_TAUTOMERS,
+  INDEX_WORDS,
+  NO_HASH,
+  NO_ID_CODE,
+} from './types.ts';
 export type { LogHandler, LogStream } from './wasm/log.ts';
 export type {
   HashOptions,
@@ -104,9 +110,21 @@ export function getNoStereoTautomerHash(
   idCode: string,
   options: HashOptions = {},
 ): bigint {
-  const { largestFragmentOnly = false } = options;
+  const {
+    largestFragmentOnly = false,
+    tautomerCounts,
+    maxTautomers = DEFAULT_MAX_TAUTOMERS,
+  } = options;
   const result = new BigInt64Array(1);
-  buildNoStereoTautomerHashes([idCode], result, largestFragmentOnly, 0, 1);
+  buildNoStereoTautomerHashes(
+    [idCode],
+    result,
+    largestFragmentOnly,
+    0,
+    1,
+    tautomerCounts,
+    maxTautomers,
+  );
   return result[0] as bigint;
 }
 
@@ -131,7 +149,11 @@ export function getNoStereoTautomerHashes(
   idCodes: string[],
   options: HashOptions = {},
 ): BigInt64Array {
-  const { largestFragmentOnly = false } = options;
+  const {
+    largestFragmentOnly = false,
+    tautomerCounts,
+    maxTautomers = DEFAULT_MAX_TAUTOMERS,
+  } = options;
   const result = new BigInt64Array(idCodes.length);
   buildNoStereoTautomerHashes(
     idCodes,
@@ -139,6 +161,8 @@ export function getNoStereoTautomerHashes(
     largestFragmentOnly,
     0,
     idCodes.length,
+    tautomerCounts,
+    maxTautomers,
   );
   return result;
 }
@@ -259,9 +283,21 @@ export function getNoStereoTautomerIdCode(
   idCode: string,
   options: HashOptions = {},
 ): string {
-  const { largestFragmentOnly = false } = options;
+  const {
+    largestFragmentOnly = false,
+    tautomerCounts,
+    maxTautomers = DEFAULT_MAX_TAUTOMERS,
+  } = options;
   const result = [NO_ID_CODE];
-  buildNoStereoTautomerIdCodes([idCode], result, largestFragmentOnly, 0, 1);
+  buildNoStereoTautomerIdCodes(
+    [idCode],
+    result,
+    largestFragmentOnly,
+    0,
+    1,
+    tautomerCounts,
+    maxTautomers,
+  );
   return result[0] as string;
 }
 
@@ -281,7 +317,11 @@ export function getNoStereoTautomerIdCodes(
   idCodes: string[],
   options: HashOptions = {},
 ): string[] {
-  const { largestFragmentOnly = false } = options;
+  const {
+    largestFragmentOnly = false,
+    tautomerCounts,
+    maxTautomers = DEFAULT_MAX_TAUTOMERS,
+  } = options;
   const result = new Array<string>(idCodes.length).fill(NO_ID_CODE);
   buildNoStereoTautomerIdCodes(
     idCodes,
@@ -289,6 +329,8 @@ export function getNoStereoTautomerIdCodes(
     largestFragmentOnly,
     0,
     idCodes.length,
+    tautomerCounts,
+    maxTautomers,
   );
   return result;
 }

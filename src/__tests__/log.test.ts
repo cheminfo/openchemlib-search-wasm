@@ -1,20 +1,20 @@
 import { afterEach, expect, test, vi } from 'vitest';
 
-import { getNoStereoTautomerHash, setLogHandler } from '../index.ts';
+import { getNoStereoTautomerIdCode, setLogHandler } from '../index.ts';
+import { createConsoleImport } from '../wasm/log.ts';
 
 import { fromSmiles } from './fixture.ts';
 
 /**
- * A decapeptide: enough amides that OpenChemLib abandons the tautomer enumeration and prints
- * `Tautomer count exceeds maximum`, which is the only message the library has been seen to emit.
- * @returns Its idcode.
+ * Feeds a string to one of the character sinks the WASM runtime imports, the way Java's
+ * `System.out` would: one character at a time.
+ * @param sink - The sink to write to.
+ * @param text - The characters to write.
  */
-function talkativeMolecule(): string {
-  let smiles = 'N';
-  for (let i = 0; i < 10; i++) {
-    smiles += '[C@@H](C)C(=O)N';
+function write(sink: (code: number) => void, text: string): void {
+  for (const character of text) {
+    sink(character.codePointAt(0) as number);
   }
-  return fromSmiles(`${smiles}C`);
 }
 
 afterEach(() => {
@@ -22,47 +22,87 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test('a molecule OpenChemLib gives up on writes nothing to the console', () => {
+test('nothing reaches the console, whatever Java writes', () => {
   const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
   const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  const { putcharStdout, putcharStderr } = createConsoleImport();
 
-  const hash = getNoStereoTautomerHash(talkativeMolecule());
+  write(putcharStdout, 'a line on stdout\n');
+  write(putcharStderr, 'a line on stderr\n');
 
-  expect(hash).toBe(6922018973500175530n);
   expect(log).not.toHaveBeenCalled();
   expect(error).not.toHaveBeenCalled();
-}, 30_000);
+});
 
-test('setLogHandler receives the line OpenChemLib would have printed', () => {
+test('a handler receives whole lines, with the stream they came from', () => {
   const lines: Array<[string, string]> = [];
   setLogHandler((message, stream) => lines.push([stream, message]));
+  const { putcharStdout, putcharStderr } = createConsoleImport();
 
-  getNoStereoTautomerHash(talkativeMolecule());
+  write(putcharStdout, 'first\nsecond\n');
+  write(putcharStderr, 'a warning\n');
 
-  expect(lines).toHaveLength(1);
-  expect(lines[0]?.[0]).toBe('stdout');
-  expect(lines[0]?.[1]).toMatch(/^Tautomer count exceeds maximum: /);
-}, 30_000);
+  expect(lines).toStrictEqual([
+    ['stdout', 'first'],
+    ['stdout', 'second'],
+    ['stderr', 'a warning'],
+  ]);
+});
+
+test('a line is delivered only once it is complete', () => {
+  const lines: string[] = [];
+  setLogHandler((message) => lines.push(message));
+  const { putcharStdout } = createConsoleImport();
+
+  write(putcharStdout, 'half a line');
+
+  expect(lines).toStrictEqual([]);
+
+  write(putcharStdout, ' and the rest\n');
+
+  expect(lines).toStrictEqual(['half a line and the rest']);
+});
+
+test('the handler applies to a sink built before it was set', () => {
+  const { putcharStdout } = createConsoleImport();
+  const lines: string[] = [];
+
+  write(putcharStdout, 'discarded\n');
+  setLogHandler((message) => lines.push(message));
+  write(putcharStdout, 'kept\n');
+
+  expect(lines).toStrictEqual(['kept']);
+});
 
 test('setLogHandler(null) goes back to discarding', () => {
   const lines: string[] = [];
   setLogHandler((message) => lines.push(message));
-  getNoStereoTautomerHash(talkativeMolecule());
+  const { putcharStdout } = createConsoleImport();
 
-  expect(lines).toHaveLength(1);
-
+  write(putcharStdout, 'kept\n');
   setLogHandler(null);
-  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-  getNoStereoTautomerHash(talkativeMolecule());
+  write(putcharStdout, 'dropped\n');
 
-  expect(lines).toHaveLength(1);
-  expect(log).not.toHaveBeenCalled();
-}, 30_000);
+  expect(lines).toStrictEqual(['kept']);
+});
 
-test('a molecule it can hash normally says nothing at all', () => {
+// OpenChemLib printed "Tautomer count exceeds maximum" for every molecule it gave up on, and built
+// that message with a full extra canonization. It is switched off at source now, and the count says
+// the same thing without the work.
+test('a molecule OpenChemLib gives up on says nothing at all', () => {
   const lines: string[] = [];
   setLogHandler((message) => lines.push(message));
+  let smiles = 'N';
+  for (let i = 0; i < 10; i++) {
+    smiles += '[C@@H](C)C(=O)N';
+  }
+  const tautomerCounts = new Int32Array(1);
 
-  expect(getNoStereoTautomerHash(fromSmiles('CCC(=O)CC'))).not.toBe(0n);
+  getNoStereoTautomerIdCode(fromSmiles(`${smiles}C`), {
+    maxTautomers: 500,
+    tautomerCounts,
+  });
+
+  expect(tautomerCounts[0]).toBeGreaterThanOrEqual(500);
   expect(lines).toStrictEqual([]);
-});
+}, 30_000);

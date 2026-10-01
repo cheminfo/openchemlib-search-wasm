@@ -48,6 +48,9 @@ getNoStereoTautomerIdCodes(idCodes: string[], options?: HashOptions): string[];
 hashToHex(hash: bigint): string;
 hexToHash(hex: string): bigint;
 
+// the hash of a canonical idcode you already hold, without canonizing again
+strongHash(idCode: string): bigint;
+
 // where OpenChemLib's own diagnostics go; nothing is printed by default
 setLogHandler(handler: LogHandler | null): void;
 ```
@@ -242,6 +245,54 @@ nothing. Inventing coordinates would also agree, and costs 19 times the parse.
 values written by 1.x has to be rebuilt; around 1.5% of them were wrong, and which ones depends on
 whether the molecule had an unconfigured stereogenic double bond.
 
+### Bounding the tautomer tail
+
+The cost of a tautomer key is set by how many tautomers the molecule has, not by its size, and the
+spread is enormous: over a drug-like fixture the median molecule takes 0.12 ms and one in a hundred
+takes most of a second. `maxTautomers` is the ceiling OpenChemLib stops at, and lowering it bounds
+that tail. `tautomerCounts` says which molecules ran into it — the only signal that a key came from
+a truncated enumeration, and so may not be canonical:
+
+```js
+const tautomerCounts = new Int32Array(idCodes.length);
+const maxTautomers = 1000;
+const keys = getNoStereoTautomerIdCodes(idCodes, {
+  maxTautomers,
+  tautomerCounts,
+});
+
+// keys[i] is not canonical where this holds — record it next to the key
+const truncated = (i) => tautomerCounts[i] >= maxTautomers;
+```
+
+Measured over 200 fixture idcodes:
+
+|   `maxTautomers` |  median |    p99 | slowest | whole batch | truncated |
+| ---------------: | ------: | -----: | ------: | ----------: | --------: |
+| 100000 (default) | 0.12 ms | 807 ms |  969 ms |     1824 ms |         2 |
+|            10000 | 0.06 ms |  46 ms |   63 ms |      135 ms |         2 |
+|             1000 | 0.06 ms |   3 ms |    4 ms |       33 ms |         2 |
+|              100 | 0.06 ms |   1 ms |    1 ms |       17 ms |         8 |
+
+At 1000 the slowest molecule is 242x cheaper and the batch 55x, and the same two molecules are
+truncated as at the default — so the ceiling costs nothing on this fixture beyond what the default
+already gave up on. Where it lands for your library is an empirical question: lower it, and count.
+
+### Getting both the key and its hash
+
+`strongHash` is OpenChemLib's 64-bit hasher, and every `CanonizerUtil` hash is defined as that hasher
+over a canonical idcode. So a caller that wants both forms asks for the idcode and hashes it, rather
+than calling two functions that each canonize:
+
+```js
+const idCode = getNoStereoTautomerIdCode(entry);
+const hash = strongHash(idCode); // identical to getNoStereoTautomerHash(entry)
+```
+
+That matters because canonizing a generic tautomer is the most expensive thing here: asking for both
+separately costs 9% more on the median molecule and 48% more averaged over a library. It is also how
+a database backfills a hash column from idcodes it already stores, with no chemistry at all.
+
 ### What they cost
 
 On ordinary drug-like molecules the no-stereo hash costs about 52 µs and the tautomer one about
@@ -283,14 +334,10 @@ SELECT printf('%016x', no_stereo_tautomer_hash) AS hash FROM molecules WHERE id 
 
 ## Diagnostics
 
-**Nothing here writes to your console.** OpenChemLib prints `Tautomer count exceeds maximum:
-<idcode>` for every molecule whose tautomers it stops enumerating — roughly one in ten of a
-drug-like library — and the generated TeaVM runtime maps Java's standard output onto `console.log`.
-That is the stream a server writing structured logs is already using, so left alone it interleaves
-unparsable lines into the log and emits thousands of them during an import. The message says nothing
-a caller can act on: the hash is still returned, and still identifies the molecule.
-
-So it is discarded, and a host that wants it says where:
+**Nothing here writes to your console.** The generated TeaVM runtime maps Java's standard output
+onto `console.log`, which is the stream a server writing structured logs is already using. Anything
+OpenChemLib printed would interleave unparsable lines into that log, so Java's two streams are
+routed to a sink that drops them, and a host that wants them says where:
 
 ```js
 import { setLogHandler } from 'openchemlib-search-wasm';
@@ -301,6 +348,10 @@ setLogHandler(null); // back to discarding
 
 The handler applies whether or not the module has been instantiated, so it can be set at startup or
 around a single call. It is per module instance, which means per worker.
+
+OpenChemLib's one message, `Tautomer count exceeds maximum`, is switched off at its source rather
+than merely dropped here: it built its text with a full extra canonization of the molecule, once per
+molecule it gave up on. `tautomerCounts` says the same thing without the work.
 
 ## What you actually win
 

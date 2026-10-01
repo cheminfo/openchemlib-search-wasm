@@ -1,5 +1,6 @@
 import type { ResultBuffer, SearchMode } from './types.ts';
 import {
+  DEFAULT_MAX_TAUTOMERS,
   INDEX_WORDS,
   NO_HASH,
   NO_ID_CODE,
@@ -160,6 +161,9 @@ export function buildIndexes(
  * @param largestFragmentOnly - Whether to strip and neutralize down to the largest fragment first.
  * @param from - The first index to hash.
  * @param to - One past the last index to hash.
+ * @param tautomerCounts - Filled with how many tautomers each molecule needed; an entry that reached
+ * `maxTautomers` is one OpenChemLib stopped early on.
+ * @param maxTautomers - The ceiling on that enumeration, which is what bounds the cost.
  * @returns How many molecules were hashed.
  */
 export function buildNoStereoTautomerHashes(
@@ -168,13 +172,17 @@ export function buildNoStereoTautomerHashes(
   largestFragmentOnly: boolean,
   from: number,
   to: number,
+  tautomerCounts: Int32Array = new Int32Array(idCodes.length),
+  maxTautomers: number = DEFAULT_MAX_TAUTOMERS,
 ): number {
   return recoveringFromTraps(
     (first, last) =>
       Search.getNoStereoTautomerHashes(
         idCodes,
         result,
+        tautomerCounts,
         largestFragmentOnly,
+        maxTautomers,
         first,
         last,
       ),
@@ -268,6 +276,9 @@ export function buildNoStereoIdCodes(
  * @param largestFragmentOnly - Whether to strip and neutralize down to the largest fragment first.
  * @param from - The first index to canonize.
  * @param to - One past the last index to canonize.
+ * @param tautomerCounts - Filled with how many tautomers each molecule needed; an entry that reached
+ * `maxTautomers` is one OpenChemLib stopped early on.
+ * @param maxTautomers - The ceiling on that enumeration, which is what bounds the cost.
  * @returns How many molecules were canonized.
  */
 export function buildNoStereoTautomerIdCodes(
@@ -276,13 +287,17 @@ export function buildNoStereoTautomerIdCodes(
   largestFragmentOnly: boolean,
   from: number,
   to: number,
+  tautomerCounts: Int32Array = new Int32Array(idCodes.length),
+  maxTautomers: number = DEFAULT_MAX_TAUTOMERS,
 ): number {
   return recoveringFromTraps(
     (first, last) =>
       Search.getNoStereoTautomerIdCodes(
         idCodes,
         result,
+        tautomerCounts,
         largestFragmentOnly,
+        maxTautomers,
         first,
         last,
       ),

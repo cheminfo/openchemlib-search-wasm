@@ -194,7 +194,9 @@ export interface OCLSearch {
     getNoStereoTautomerHashes: (
       idCodes: string[],
       result: BigInt64Array,
+      tautomerCounts: Int32Array,
       largestFragmentOnly: boolean,
+      maxTautomers: number,
       from: number,
       to: number,
     ) => number;
@@ -218,7 +220,9 @@ export interface OCLSearch {
     getNoStereoTautomerIdCodes: (
       idCodes: string[],
       result: string[],
+      tautomerCounts: Int32Array,
       largestFragmentOnly: boolean,
+      maxTautomers: number,
       from: number,
       to: number,
     ) => number;
@@ -237,6 +241,29 @@ export interface HashOptions {
    * @default false
    */
   largestFragmentOnly?: boolean;
+
+  /**
+   * The ceiling on how many tautomers OpenChemLib enumerates before it settles for what it has.
+   * Only the tautomer functions read it.
+   *
+   * The cost of a tautomer key is set by this, not by the molecule's size: the median molecule needs
+   * a hundred microseconds and one in a hundred runs into the ceiling and spends the better part of
+   * a second getting there. Lowering it bounds that tail, at the price of a key that may not be
+   * canonical for the molecules that hit it — compare `tautomerCounts` against this value to find
+   * them.
+   * @default 100000 — OpenChemLib's own
+   */
+  maxTautomers?: number;
+
+  /**
+   * Filled with how many tautomers were enumerated for each molecule, if given. An entry that
+   * reached {@link HashOptions.maxTautomers} is one OpenChemLib stopped early on, which is the only
+   * signal that a key may not be canonical.
+   *
+   * It is the caller's buffer, `idCodes.length` entries long, so a table of flags costs one
+   * allocation. Only the tautomer functions write it.
+   */
+  tautomerCounts?: Int32Array;
 }
 
 /** {@link HashOptions} under the name the tautomer hashes introduced it with. */
@@ -255,3 +282,9 @@ export const NO_HASH = 0n;
  * the idcode counterpart of {@link NO_HASH}.
  */
 export const NO_ID_CODE = '';
+
+/**
+ * How many tautomers OpenChemLib enumerates before it settles for what it has, unless
+ * {@link HashOptions.maxTautomers} says otherwise. It is OpenChemLib's own ceiling.
+ */
+export const DEFAULT_MAX_TAUTOMERS = 100_000;

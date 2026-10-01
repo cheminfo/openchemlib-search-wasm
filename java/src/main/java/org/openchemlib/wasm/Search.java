@@ -45,6 +45,20 @@ public final class Search {
   /** Entry i of a similaritySearch result: idCodes[i] could not be parsed. */
   private static final float UNPARSABLE_SIMILARITY = -1;
 
+  static {
+    // OpenChemLib prints "Tautomer count exceeds maximum" to System.out for every molecule it gives
+    // up on. The JS side already routes Java's streams away from the host console, but a library has
+    // no business writing there at all, and OpenChemLib offers the switch.
+    TautomerHelper.setSuppressWarning(true);
+  }
+
+  /**
+   * How many tautomers the last {@link #noStereoTautomerIdCode} enumerated. A scan is synchronous
+   * and nothing outside this class can reach it, so one field is enough and needs no lock — the same
+   * reasoning as the cached fragment below.
+   */
+  private static int lastTautomerCount;
+
   /**
    * Reusable ASCII buffer. IDCodeParser takes a {@code byte[]} and its {@code String} overload
    * calls {@code String.getBytes(UTF_8)}, which allocates one array per molecule — measurable when
@@ -221,9 +235,12 @@ public final class Search {
   public static int getNoStereoTautomerHashes(
       JSArrayReader<JSString> idCodes,
       BigInt64Array result,
+      Int32Array tautomerCounts,
       boolean largestFragmentOnly,
+      int maxTautomers,
       int from,
       int to) {
+    TautomerHelper.setMaxTautomers(maxTautomers);
     IDCodeParserWithoutCoordinateInvention parser = new IDCodeParserWithoutCoordinateInvention();
     StereoMolecule molecule = new StereoMolecule();
     int hashed = 0;
@@ -236,6 +253,7 @@ public final class Search {
         hashed++;
       }
       result.set(i, hash);
+      tautomerCounts.set(i, lastTautomerCount);
     }
     return hashed;
   }
@@ -310,7 +328,7 @@ public final class Search {
       boolean largestFragmentOnly,
       int from,
       int to) {
-    return writeIdCodes(idCodes, result, largestFragmentOnly, from, to, false);
+    return writeIdCodes(idCodes, result, null, largestFragmentOnly, from, to, false);
   }
 
   /**
@@ -332,15 +350,20 @@ public final class Search {
   public static int getNoStereoTautomerIdCodes(
       JSArrayReader<JSString> idCodes,
       JSArray<JSString> result,
+      Int32Array tautomerCounts,
       boolean largestFragmentOnly,
+      int maxTautomers,
       int from,
       int to) {
-    return writeIdCodes(idCodes, result, largestFragmentOnly, from, to, true);
+    TautomerHelper.setMaxTautomers(maxTautomers);
+    return writeIdCodes(
+        idCodes, result, tautomerCounts, largestFragmentOnly, from, to, true);
   }
 
   private static int writeIdCodes(
       JSArrayReader<JSString> idCodes,
       JSArray<JSString> result,
+      Int32Array tautomerCounts,
       boolean largestFragmentOnly,
       int from,
       int to,
@@ -350,12 +373,18 @@ public final class Search {
     int written = 0;
     for (int i = from; i < to; i++) {
       if (!parse(parser, molecule, idCodes.get(i).stringValue())) {
+        if (tautomerCounts != null) {
+          tautomerCounts.set(i, 0);
+        }
         continue;
       }
       String idCode =
           tautomer
               ? noStereoTautomerIdCode(molecule, largestFragmentOnly)
               : noStereoIdCode(molecule, largestFragmentOnly);
+      if (tautomerCounts != null) {
+        tautomerCounts.set(i, lastTautomerCount);
+      }
       if (idCode != null) {
         result.set(i, JSString.valueOf(idCode));
         written++;
@@ -408,9 +437,12 @@ public final class Search {
    */
   private static String noStereoTautomerIdCode(
       StereoMolecule molecule, boolean largestFragmentOnly) {
+    lastTautomerCount = 0;
     try {
       StereoMolecule target = reduced(molecule, largestFragmentOnly);
-      StereoMolecule generic = new TautomerHelper(target).createGenericTautomer();
+      TautomerHelper helper = new TautomerHelper(target);
+      lastTautomerCount = helper.getTautomerCount();
+      StereoMolecule generic = helper.createGenericTautomer();
       return new Canonizer(
               generic,
               Canonizer.ENCODE_ATOM_CUSTOM_LABELS | Canonizer.NEGLECT_ANY_STEREO_INFORMATION)
