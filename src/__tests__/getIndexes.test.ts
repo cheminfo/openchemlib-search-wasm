@@ -8,15 +8,19 @@ import { readIdCodes } from './fixture.ts';
 // Building a fingerprint costs ~0.9 ms per molecule, so the cross-check runs on a slice.
 const idCodes = readIdCodes().slice(0, 250);
 
+// One searcher for every reference fingerprint: its constructor parses OpenChemLib's 512 key
+// fragments, which is work none of the 250 molecules below needs repeated. `referenceSimilarity`
+// in fixture.ts already shares one for the same reason. Each `createIndex` returns its own array,
+// so results kept across calls stay independent.
+const searcher = new OCL.SSSearcherWithIndex();
+
 /**
  * What `openchemlib-sqlite` stores today, straight out of `openchemlib-js`.
  * @param idCode - The molecule to fingerprint.
  * @returns Its 512-bit FragFp, as sixteen 32-bit words.
  */
 function referenceIndex(idCode: string): number[] {
-  return new OCL.SSSearcherWithIndex().createIndex(
-    OCL.Molecule.fromIDCode(idCode, false),
-  );
+  return searcher.createIndex(OCL.Molecule.fromIDCode(idCode, false));
 }
 
 test('every word matches openchemlib-js createIndex', () => {
@@ -32,7 +36,10 @@ test('every word matches openchemlib-js createIndex', () => {
 
     expect([i, actual]).toStrictEqual([i, expected]);
   }
-});
+  // ~1 s of openchemlib-js reference work on an idle machine, and several times that on a busy CI
+  // runner. Vitest's 5 s default left no headroom for that, so this said "timed out" rather than
+  // "slow"; the budget is explicit instead.
+}, 60_000);
 
 test('every index is sixteen words long', () => {
   const indexes = getIndexes(idCodes.slice(0, 5));

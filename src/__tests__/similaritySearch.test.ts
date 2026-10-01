@@ -25,7 +25,9 @@ test('similaritySearch reproduces openchemlib-js exactly', () => {
 
   // Both compute the same 32-bit float from the same bit counts, so this is exact, not approximate.
   expect(Array.from(result)).toStrictEqual(Array.from(expected));
-});
+  // The reference fingerprints all 150 entries with openchemlib-js. That fits vitest's 5 s default
+  // on an idle machine and does not on a busy one, so the budget is explicit rather than implied.
+}, 60_000);
 
 test('every similarity is a real number in [0, 1]', () => {
   const result = scores(NAPHTHALENE, idCodes);
