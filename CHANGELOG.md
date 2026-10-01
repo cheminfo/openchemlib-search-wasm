@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.0](https://github.com/cheminfo/openchemlib-search-wasm/compare/v1.2.0...v2.0.0) (2026-10-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* getNoStereoHash and getNoStereoTautomerHash change for a molecule whose stereogenic double bond has no configuration, about 1.5% of a drug-like library. A column of values written by 1.x has to be rebuilt.
+
+### Features
+
+* bound the tautomer enumeration, and export strongHash ([04f70b3](https://github.com/cheminfo/openchemlib-search-wasm/commit/04f70b374dddfa26077990f97be31c5d874628b2))
+* canonize without stereo instead of stripping it ([9a241a0](https://github.com/cheminfo/openchemlib-search-wasm/commit/9a241a0a656dcebf4b1fe5be7191b69f72b92126))
+
 ## [1.2.0](https://github.com/cheminfo/openchemlib-search-wasm/compare/v1.1.0...v1.2.0) (2026-09-10)
 
 
