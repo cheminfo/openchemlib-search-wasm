@@ -1,11 +1,15 @@
 package org.openchemlib.wasm;
 
+import com.actelion.research.chem.Canonizer;
 import com.actelion.research.chem.CanonizerUtil;
 import com.actelion.research.chem.IDCodeParserWithoutCoordinateInvention;
+import com.actelion.research.chem.MoleculeNeutralizer;
 import com.actelion.research.chem.SSSearcher;
 import com.actelion.research.chem.SSSearcherWithIndex;
 import com.actelion.research.chem.StereoMolecule;
+import com.actelion.research.chem.TautomerHelper;
 import org.teavm.jso.JSExport;
+import org.teavm.jso.core.JSArray;
 import org.teavm.jso.core.JSArrayReader;
 import org.teavm.jso.core.JSString;
 import org.teavm.jso.typedarrays.BigInt64Array;
@@ -226,7 +230,7 @@ public final class Search {
     for (int i = from; i < to; i++) {
       long hash =
           parse(parser, molecule, idCodes.get(i).stringValue())
-              ? CanonizerUtil.getNoStereoTautomerHash(molecule, largestFragmentOnly)
+              ? hashOf(noStereoTautomerIdCode(molecule, largestFragmentOnly))
               : 0;
       if (hash != 0) {
         hashed++;
@@ -273,7 +277,7 @@ public final class Search {
     for (int i = from; i < to; i++) {
       long hash =
           parse(parser, molecule, idCodes.get(i).stringValue())
-              ? CanonizerUtil.getNoStereoHash(molecule, largestFragmentOnly)
+              ? hashOf(noStereoIdCode(molecule, largestFragmentOnly))
               : 0;
       if (hash != 0) {
         hashed++;
@@ -281,6 +285,169 @@ public final class Search {
       result.set(i, hash);
     }
     return hashed;
+  }
+
+  /**
+   * Writes the canonical no-stereo idcode of {@code idCodes[from .. to)} into {@code result}, one per
+   * molecule.
+   *
+   * <p>This is the string {@link #getNoStereoHashes} hashes, for a caller that stores the canonical
+   * form itself rather than a 64-bit key.
+   *
+   * @param idCodes the molecules to canonize
+   * @param result written as the scan advances, one idcode per molecule, indexed by the molecule's
+   *     position in {@code idCodes}. A molecule whose idcode will not parse, or that OpenChemLib
+   *     cannot canonize, is left untouched.
+   * @param largestFragmentOnly whether to first strip all but the largest fragment and neutralize it
+   * @param from the first index to canonize
+   * @param to one past the last index to canonize
+   * @return how many molecules in the range were canonized
+   */
+  @JSExport
+  public static int getNoStereoIdCodes(
+      JSArrayReader<JSString> idCodes,
+      JSArray<JSString> result,
+      boolean largestFragmentOnly,
+      int from,
+      int to) {
+    return writeIdCodes(idCodes, result, largestFragmentOnly, from, to, false);
+  }
+
+  /**
+   * Writes the canonical no-stereo generic-tautomer idcode of {@code idCodes[from .. to)} into
+   * {@code result}, one per molecule.
+   *
+   * <p>This is the string {@link #getNoStereoTautomerHashes} hashes.
+   *
+   * @param idCodes the molecules to canonize
+   * @param result written as the scan advances, one idcode per molecule, indexed by the molecule's
+   *     position in {@code idCodes}. A molecule whose idcode will not parse, or that OpenChemLib
+   *     cannot canonize, is left untouched.
+   * @param largestFragmentOnly whether to first strip all but the largest fragment and neutralize it
+   * @param from the first index to canonize
+   * @param to one past the last index to canonize
+   * @return how many molecules in the range were canonized
+   */
+  @JSExport
+  public static int getNoStereoTautomerIdCodes(
+      JSArrayReader<JSString> idCodes,
+      JSArray<JSString> result,
+      boolean largestFragmentOnly,
+      int from,
+      int to) {
+    return writeIdCodes(idCodes, result, largestFragmentOnly, from, to, true);
+  }
+
+  private static int writeIdCodes(
+      JSArrayReader<JSString> idCodes,
+      JSArray<JSString> result,
+      boolean largestFragmentOnly,
+      int from,
+      int to,
+      boolean tautomer) {
+    IDCodeParserWithoutCoordinateInvention parser = new IDCodeParserWithoutCoordinateInvention();
+    StereoMolecule molecule = new StereoMolecule();
+    int written = 0;
+    for (int i = from; i < to; i++) {
+      if (!parse(parser, molecule, idCodes.get(i).stringValue())) {
+        continue;
+      }
+      String idCode =
+          tautomer
+              ? noStereoTautomerIdCode(molecule, largestFragmentOnly)
+              : noStereoIdCode(molecule, largestFragmentOnly);
+      if (idCode != null) {
+        result.set(i, JSString.valueOf(idCode));
+        written++;
+      }
+    }
+    return written;
+  }
+
+  /**
+   * The canonical idcode of {@code molecule} with its stereochemistry disregarded.
+   *
+   * <p>OpenChemLib's own {@code CanonizerUtil.getIDCodeNoStereo} calls {@code
+   * stripStereoInformation()} and canonizes the result, which needs atom coordinates: stripping
+   * turns an implicit double-bond configuration into a cross bond, and without coordinates there is
+   * no stereo bond to turn. Our molecules come from {@link IDCodeParserWithoutCoordinateInvention},
+   * so that path does not merely lose the configuration — it invents one. Measured on 400 real
+   * idcodes it disagreed with the coordinate-bearing answer on 6 of them, turning an unconfigured
+   * double bond into E and, for a Z one, flipping it.
+   *
+   * <p>Telling the canonizer to disregard stereochemistry instead needs no coordinates and agrees
+   * with the coordinate-bearing answer on all 400. Inventing coordinates would also agree, and costs
+   * 19 times the parse.
+   *
+   * @param molecule the molecule to canonize; not modified
+   * @param largestFragmentOnly whether to first strip all but the largest fragment and neutralize it
+   * @return its canonical no-stereo idcode, or null if OpenChemLib could not canonize it
+   */
+  private static String noStereoIdCode(StereoMolecule molecule, boolean largestFragmentOnly) {
+    try {
+      StereoMolecule target = reduced(molecule, largestFragmentOnly);
+      return new Canonizer(target, Canonizer.NEGLECT_ANY_STEREO_INFORMATION).getIDCode();
+    } catch (Throwable error) {
+      return null;
+    }
+  }
+
+  /**
+   * The canonical idcode of {@code molecule}'s generic tautomer, with its stereochemistry
+   * disregarded.
+   *
+   * <p>The generic tautomer is built the way {@code CanonizerUtil.getIDCodeNoStereoTautomer} builds
+   * it, and canonized with the same {@code ENCODE_ATOM_CUSTOM_LABELS} it uses — the labels carry the
+   * pi-electron counts that make a tautomer region canonical. The stereo handling is
+   * {@link #noStereoIdCode}'s, and for the same reason.
+   *
+   * @param molecule the molecule to canonize; not modified
+   * @param largestFragmentOnly whether to first strip all but the largest fragment and neutralize it
+   * @return its canonical no-stereo generic-tautomer idcode, or null if OpenChemLib could not
+   *     canonize it
+   */
+  private static String noStereoTautomerIdCode(
+      StereoMolecule molecule, boolean largestFragmentOnly) {
+    try {
+      StereoMolecule target = reduced(molecule, largestFragmentOnly);
+      StereoMolecule generic = new TautomerHelper(target).createGenericTautomer();
+      return new Canonizer(
+              generic,
+              Canonizer.ENCODE_ATOM_CUSTOM_LABELS | Canonizer.NEGLECT_ANY_STEREO_INFORMATION)
+          .getIDCode();
+    } catch (Throwable error) {
+      return null;
+    }
+  }
+
+  /**
+   * A copy of {@code molecule}, optionally reduced to its largest fragment and neutralized.
+   *
+   * <p>The copy is what keeps the caller's molecule untouched, and it is the reusable one every
+   * scan parses into, so canonizing must not consume it.
+   *
+   * @param molecule the molecule to copy
+   * @param largestFragmentOnly whether to strip all but the largest fragment and neutralize it
+   * @return the copy
+   */
+  private static StereoMolecule reduced(StereoMolecule molecule, boolean largestFragmentOnly) {
+    StereoMolecule copy = molecule.getCompactCopy();
+    if (largestFragmentOnly) {
+      copy.stripSmallFragments(true);
+      MoleculeNeutralizer.neutralizeChargedMolecule(copy);
+    }
+    return copy;
+  }
+
+  /**
+   * OpenChemLib's 64-bit StrongHasher over a canonical idcode, which is how every {@code
+   * CanonizerUtil} hash is defined.
+   *
+   * @param idCode the canonical idcode to hash, or null
+   * @return its hash, or 0 when there is no idcode
+   */
+  private static long hashOf(String idCode) {
+    return idCode == null ? 0 : CanonizerUtil.StrongHasher.hash(idCode);
   }
 
   private static StereoMolecule parseFragment(String idCodeQuery) {

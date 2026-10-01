@@ -17,6 +17,12 @@ export interface LoadOptions {
     /** A memory to instantiate against instead of creating one. */
     external?: WebAssembly.Memory;
   };
+  /**
+   * Called with the import object once the runtime has installed its own entries, so one of them
+   * can be replaced before instantiation. `teavmConsole` is the entry that matters here: the
+   * runtime fills it with character sinks that call `console.log` and `console.error`.
+   */
+  installImports?: (imports: Record<string, unknown>) => void;
 }
 
 export function load(

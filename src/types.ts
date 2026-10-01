@@ -206,6 +206,22 @@ export interface OCLSearch {
       from: number,
       to: number,
     ) => number;
+    /** Returns how many molecules in the range were canonized. */
+    getNoStereoIdCodes: (
+      idCodes: string[],
+      result: string[],
+      largestFragmentOnly: boolean,
+      from: number,
+      to: number,
+    ) => number;
+    /** Returns how many molecules in the range were canonized. */
+    getNoStereoTautomerIdCodes: (
+      idCodes: string[],
+      result: string[],
+      largestFragmentOnly: boolean,
+      from: number,
+      to: number,
+    ) => number;
   };
 }
 
@@ -232,3 +248,10 @@ export type TautomerHashOptions = HashOptions;
  * usable "no hash" check.
  */
 export const NO_HASH = 0n;
+
+/**
+ * The canonical idcode of a molecule that has none: its idcode could not be parsed, or OpenChemLib
+ * could not canonize it. The empty string is never a valid idcode, so an equality test against it is
+ * the idcode counterpart of {@link NO_HASH}.
+ */
+export const NO_ID_CODE = '';

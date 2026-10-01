@@ -2,6 +2,8 @@ import { wasmGzipBase64 } from '../../wasm/data.js';
 import { load } from '../../wasm/runtime.js';
 import type { OCLSearch } from '../types.ts';
 
+import { createConsoleImport } from './log.ts';
+
 let modulePromise: Promise<OCLSearch> | undefined;
 
 /**
@@ -27,7 +29,14 @@ export function loadOCL(): Promise<OCLSearch> {
 
 async function instantiate(): Promise<OCLSearch> {
   const wasmBytes = await gunzip(base64ToBytes(wasmGzipBase64));
-  const teavm = await load(wasmBytes, { memory: { maxSize: MAX_LINEAR_MEMORY } });
+  const teavm = await load(wasmBytes, {
+    memory: { maxSize: MAX_LINEAR_MEMORY },
+    // The runtime's own `teavmConsole` puts Java's System.out on `console.log`, so OpenChemLib's
+    // "Tautomer count exceeds maximum" lands on the host's stdout — see src/wasm/log.ts.
+    installImports(imports) {
+      imports.teavmConsole = createConsoleImport();
+    },
+  });
   return teavm.exports as unknown as OCLSearch;
 }
 

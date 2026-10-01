@@ -1,14 +1,19 @@
 import {
   buildIndexes,
   buildNoStereoHashes,
+  buildNoStereoIdCodes,
   buildNoStereoTautomerHashes,
+  buildNoStereoTautomerIdCodes,
 } from './scan.ts';
 import type { HashOptions } from './types.ts';
-import { INDEX_WORDS } from './types.ts';
+import { INDEX_WORDS, NO_ID_CODE } from './types.ts';
 
 export { substructureSearch } from './substructureSearch.ts';
+export { setLogHandler } from './wasm/log.ts';
+export { hashToHex, hexToHash } from './hex.ts';
 export { similaritySearch } from './similaritySearch.ts';
-export { INDEX_WORDS, NO_HASH } from './types.ts';
+export { INDEX_WORDS, NO_HASH, NO_ID_CODE } from './types.ts';
+export type { LogHandler, LogStream } from './wasm/log.ts';
 export type {
   HashOptions,
   ResultBuffer,
@@ -190,5 +195,100 @@ export function getNoStereoHashes(
   const { largestFragmentOnly = false } = options;
   const result = new BigInt64Array(idCodes.length);
   buildNoStereoHashes(idCodes, result, largestFragmentOnly, 0, idCodes.length);
+  return result;
+}
+
+/**
+ * Canonizes one idcode to the form OpenChemLib identifies a molecule by up to stereochemistry.
+ *
+ * This is the string {@link getNoStereoHash} hashes, for a database that stores the canonical form
+ * itself. Prefer the hash where the column is only ever compared: it is a signed 64-bit integer, so
+ * it stores and indexes in 8 bytes where these idcodes average around 25 characters.
+ *
+ * ```js
+ * getNoStereoIdCode(idCode); // 'gGX`BDdwMT@@'
+ * ```
+ * @param idCode - The molecule to canonize, as an idcode.
+ * @param options - See {@link HashOptions}.
+ * @returns Its canonical no-stereo idcode, or `NO_ID_CODE` (`''`) for an idcode that will not parse
+ * or a molecule OpenChemLib cannot canonize.
+ */
+export function getNoStereoIdCode(
+  idCode: string,
+  options: HashOptions = {},
+): string {
+  const { largestFragmentOnly = false } = options;
+  const result = [NO_ID_CODE];
+  buildNoStereoIdCodes([idCode], result, largestFragmentOnly, 0, 1);
+  return result[0] as string;
+}
+
+/**
+ * Canonizes every idcode to the form OpenChemLib identifies a molecule by up to stereochemistry.
+ *
+ * See {@link getNoStereoIdCode} for what the form identifies.
+ * @param idCodes - The molecules to canonize, as idcodes.
+ * @param options - See {@link HashOptions}.
+ * @returns One idcode per input, in order, with `NO_ID_CODE` (`''`) for each one that could not be
+ * canonized.
+ */
+export function getNoStereoIdCodes(
+  idCodes: string[],
+  options: HashOptions = {},
+): string[] {
+  const { largestFragmentOnly = false } = options;
+  const result = new Array<string>(idCodes.length).fill(NO_ID_CODE);
+  buildNoStereoIdCodes(idCodes, result, largestFragmentOnly, 0, idCodes.length);
+  return result;
+}
+
+/**
+ * Canonizes one idcode to the form OpenChemLib identifies a molecule by up to tautomerism and
+ * stereochemistry.
+ *
+ * This is the string {@link getNoStereoTautomerHash} hashes. It is the generic tautomer's idcode, so
+ * it is longer than the molecule's own — around twice it for a molecule with tautomeric sites — and
+ * it is not a structure: parsing it back gives a molecule with every tautomeric bond normalized, not
+ * the compound. Use it as a key, never as something to draw.
+ * @param idCode - The molecule to canonize, as an idcode.
+ * @param options - See {@link HashOptions}.
+ * @returns Its canonical no-stereo generic-tautomer idcode, or `NO_ID_CODE` (`''`) for an idcode that
+ * will not parse or a molecule OpenChemLib cannot canonize.
+ */
+export function getNoStereoTautomerIdCode(
+  idCode: string,
+  options: HashOptions = {},
+): string {
+  const { largestFragmentOnly = false } = options;
+  const result = [NO_ID_CODE];
+  buildNoStereoTautomerIdCodes([idCode], result, largestFragmentOnly, 0, 1);
+  return result[0] as string;
+}
+
+/**
+ * Canonizes every idcode to the form OpenChemLib identifies a molecule by up to tautomerism and
+ * stereochemistry.
+ *
+ * See {@link getNoStereoTautomerIdCode} for what the form identifies, and
+ * {@link getNoStereoTautomerHashes} for what it costs — the canonization is the expensive part, not
+ * the hashing, so these cost what those do.
+ * @param idCodes - The molecules to canonize, as idcodes.
+ * @param options - See {@link HashOptions}.
+ * @returns One idcode per input, in order, with `NO_ID_CODE` (`''`) for each one that could not be
+ * canonized.
+ */
+export function getNoStereoTautomerIdCodes(
+  idCodes: string[],
+  options: HashOptions = {},
+): string[] {
+  const { largestFragmentOnly = false } = options;
+  const result = new Array<string>(idCodes.length).fill(NO_ID_CODE);
+  buildNoStereoTautomerIdCodes(
+    idCodes,
+    result,
+    largestFragmentOnly,
+    0,
+    idCodes.length,
+  );
   return result;
 }

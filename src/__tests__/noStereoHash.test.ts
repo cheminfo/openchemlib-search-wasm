@@ -15,13 +15,20 @@ const idCodes = readIdCodes();
 
 /**
  * The hash `openchemlib-js` yields for the same molecule, the long way round.
+ *
+ * The idcode is parsed WITH coordinate invention. Without it, `stripStereoInformation()` cannot turn
+ * an implicit double-bond configuration into a cross bond, and the canonizer then assigns one: the
+ * round trip is not stable, turning an unconfigured double bond into E and flipping a Z one. Over
+ * this fixture that reference disagreed with the coordinate-bearing one on 6 idcodes in 400. A
+ * reference that parses the way the module does would agree with it on those and be wrong with it,
+ * so it parses the way a caller holding a molecule does instead.
  * @param idCode - The molecule to hash.
  * @returns Its no-stereo hash.
  */
 function referenceHash(idCode: string): bigint {
   return strongHash(
     OCL.CanonizerUtil.getIDCode(
-      OCL.Molecule.fromIDCode(idCode, false),
+      OCL.Molecule.fromIDCode(idCode, true),
       OCL.CanonizerUtil.NOSTEREO,
     ),
   );

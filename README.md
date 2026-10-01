@@ -37,6 +37,19 @@ getNoStereoHashes(idCodes: string[], options?: HashOptions): BigInt64Array;
 // the same, across its tautomers as well
 getNoStereoTautomerHash(idCode: string, options?: HashOptions): bigint;
 getNoStereoTautomerHashes(idCodes: string[], options?: HashOptions): BigInt64Array;
+
+// the same two canonical forms as idcodes, for a column that stores the form itself
+getNoStereoIdCode(idCode: string, options?: HashOptions): string;
+getNoStereoIdCodes(idCodes: string[], options?: HashOptions): string[];
+getNoStereoTautomerIdCode(idCode: string, options?: HashOptions): string;
+getNoStereoTautomerIdCodes(idCodes: string[], options?: HashOptions): string[];
+
+// a hash as the 16 hex digits that cross an API, and back
+hashToHex(hash: bigint): string;
+hexToHash(hex: string): bigint;
+
+// where OpenChemLib's own diagnostics go; nothing is printed by default
+setLogHandler(handler: LogHandler | null): void;
 ```
 
 **Give it your objects and it gives them back.** An entry is an idcode or anything carrying one — a
@@ -144,6 +157,13 @@ const index = getIndex(idCode);
 const columns = new BigInt64Array(index.buffer, index.byteOffset, 8);
 ```
 
+**Pass `byteOffset` and the length, as above.** `getIndexes` returns its views over one shared
+buffer — offsets 0, 64, 128 and so on — so `new BigInt64Array(index.buffer)` is 8 columns only for
+the first molecule and silently reads the first molecule's words for every other one. It is wrong in
+a way nothing reports: the row is written, the index is built, and the screen then misses real hits.
+`getIndex` on its own always sits at offset 0, which is exactly what makes the mistake survive
+testing on one molecule.
+
 This is the expensive half of importing a library, and where the biggest speedup is.
 
 ## Identity hashes
@@ -189,6 +209,39 @@ molecule OpenChemLib cannot canonize, gets `NO_HASH` (`0n`).
 Both take `{ largestFragmentOnly: true }` to strip everything but the largest fragment and
 neutralize it first, so a salt hashes as its parent structure.
 
+### The canonical form itself
+
+Each hash is OpenChemLib's 64-bit StrongHasher over a canonical idcode, and that idcode is available
+too — `getNoStereoIdCode` and `getNoStereoTautomerIdCode`, with `…IdCodes` batch forms. They are the
+exact strings the hashes hash, computed by the same code, so the two can never disagree.
+
+Prefer the hash for a column that is only ever compared: 8 bytes that an integer index handles,
+against around 25 characters for a no-stereo idcode and roughly twice that for a tautomer one. Reach
+for the idcode when you need the canonical form itself — to show it, to hand it to another
+OpenChemLib, or because a 1-in-2^64 collision is not acceptable for what the column decides.
+
+**A tautomer idcode is a key, not a structure.** Parsing one back gives a molecule with every
+tautomeric bond normalized and pi-electron counts in its atom labels, not the compound.
+
+### Stereochemistry and coordinates
+
+These functions canonize with the canonizer told to disregard stereochemistry, rather than by
+stripping stereo from the molecule and canonizing that. The distinction matters because the module
+parses idcodes without inventing coordinates: `stripStereoInformation()` turns an implicit
+double-bond configuration into a cross bond, there is no stereo bond to turn without coordinates, and
+the canonizer then assigns a configuration instead of dropping one. Measured over 400 real idcodes,
+the stripping route disagreed with the answer a caller holding a molecule gets on 6 of them — turning
+an unconfigured double bond into E, and flipping a Z one. So a compound drawn without its
+double-bond stereo keyed differently from the same compound drawn with it, which is the one thing
+these keys exist to prevent.
+
+Disregarding stereo in the canonizer agrees with the coordinate-bearing answer on all 400 and costs
+nothing. Inventing coordinates would also agree, and costs 19 times the parse.
+
+**This changed the hashes in 2.0.0.** A column of `getNoStereoHash` or `getNoStereoTautomerHash`
+values written by 1.x has to be rebuilt; around 1.5% of them were wrong, and which ones depends on
+whether the molecule had an unconfigured stereogenic double bond.
+
 ### What they cost
 
 On ordinary drug-like molecules the no-stereo hash costs about 52 µs and the tautomer one about
@@ -204,6 +257,50 @@ no-stereo hash is 0.2% of the tautomer one.
 Two things follow. Hash a library **in a worker**, never on the main thread. And if you only need
 identity up to stereochemistry, `getNoStereoHash` is the one to reach for: it is the hash whose cost
 you can predict.
+
+### Getting a hash out of a process
+
+A hash is a signed 64-bit integer. `JSON.stringify` throws on a `BigInt`, and a JSON number could
+not carry one anyway, so a hash that leaves the process goes as the 16 hex digits of its pattern:
+
+```js
+import { hashToHex, hexToHash } from 'openchemlib-search-wasm';
+
+hashToHex(getNoStereoTautomerHash(idCode)); // 'eb14b9bc9ab4dd52', always 16 characters
+hexToHash('eb14b9bc9ab4dd52'); // -1507375755561738926n
+```
+
+`hash.toString(16)` is not the same thing: it writes `-1` for `-1n`, where the pattern is
+`ffffffffffffffff`, and it pads nothing.
+
+Store the hash in an integer column — 8 bytes, and the column indexes as an integer — and let the
+database format it on the way out. SQLite's `printf('%016x', hash)` produces exactly the same
+string, which also keeps a 64-bit value from ever being read into a JavaScript number:
+
+```sql
+SELECT printf('%016x', no_stereo_tautomer_hash) AS hash FROM molecules WHERE id = ?;
+```
+
+## Diagnostics
+
+**Nothing here writes to your console.** OpenChemLib prints `Tautomer count exceeds maximum:
+<idcode>` for every molecule whose tautomers it stops enumerating — roughly one in ten of a
+drug-like library — and the generated TeaVM runtime maps Java's standard output onto `console.log`.
+That is the stream a server writing structured logs is already using, so left alone it interleaves
+unparsable lines into the log and emits thousands of them during an import. The message says nothing
+a caller can act on: the hash is still returned, and still identifies the molecule.
+
+So it is discarded, and a host that wants it says where:
+
+```js
+import { setLogHandler } from 'openchemlib-search-wasm';
+
+setLogHandler((message, stream) => logger.debug({ stream }, message));
+setLogHandler(null); // back to discarding
+```
+
+The handler applies whether or not the module has been instantiated, so it can be set at startup or
+around a single call. It is per module instance, which means per worker.
 
 ## What you actually win
 
