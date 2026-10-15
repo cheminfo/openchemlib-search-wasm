@@ -30,6 +30,14 @@ similaritySearch<Entry>(idCodeQuery: string, entries: Entry[],
 getIndex(idCode: string): Int32Array;
 getIndexes(idCodes: string[]): Int32Array[];
 
+// the 512-bit screen next to it, from a dictionary of 512 query fragments
+getScreen(idCode: string): Int32Array;
+getScreens(idCodes: string[]): Int32Array[];
+
+// what every molecule a query matches has in its FragFp and in its screen
+getQueryIndex(idCodeQuery: string): Int32Array;
+getQueryScreen(idCodeQuery: string): Int32Array;
+
 // the 64-bit hash a molecule keeps across its stereoisomers
 getNoStereoHash(idCode: string, options?: HashOptions): bigint;
 getNoStereoHashes(idCodes: string[], options?: HashOptions): BigInt64Array;
@@ -168,6 +176,35 @@ a way nothing reports: the row is written, the index is built, and the screen th
 testing on one molecule.
 
 This is the expensive half of importing a library, and where the biggest speedup is.
+
+## Screens
+
+FragFp alone lets many molecules through a prescreen that a substructure search then rejects.
+`getScreen` adds 512 more bits: bit i is set when key i of a frozen dictionary of 512 OpenChemLib
+query fragments is a substructure of the molecule, matched exactly as FragFp matches its own keys. A
+molecule is a candidate for a query only if it holds every bit of the query's FragFp and of its
+screen:
+
+```js
+const isSubset = (query, molecule) =>
+  query.every((word, i) => (word & molecule[i]) === word);
+
+const isCandidate =
+  isSubset(getQueryIndex(query), getIndex(idCode)) &&
+  isSubset(getQueryScreen(query), getScreen(idCode));
+```
+
+On 1 M PubChem molecules, requiring both lets through 16% of the non-matching molecules FragFp alone
+lets through, and 2% for rare queries; no true match was rejected over 23 M true pairs. A screen
+costs about 0.7 times a fingerprint.
+
+`getQueryIndex` and `getQueryScreen` read a query the way the substructure search matches it.
+OpenChemLib's own query fingerprint does not yet, and rejects true matches of a query with an
+exclude group cutting an aromatic ring or with a "match formal bond order" bond
+([Actelion/openchemlib#177](https://github.com/Actelion/openchemlib/issues/177)); it also skips atom
+ring sizes when it matches a key in a query
+([#178](https://github.com/Actelion/openchemlib/issues/178)). For any other query, `getQueryIndex`
+equals OpenChemLib's own.
 
 ## Identity hashes
 

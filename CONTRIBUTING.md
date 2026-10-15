@@ -6,7 +6,7 @@ TeaVM. Almost everything below is about keeping that closure cheap to upgrade.
 ```
 java/pom.xml                          TeaVM WasmGC build; javac pulls OpenChemLib from the submodule
 java/overlay/                         escape hatch, deliberately empty
-java/src/main/java/org/openchemlib/wasm/{Entry,Search}.java   the only Java we own
+java/src/main/java/org/openchemlib/wasm/{Entry,Search,Screen,ScreenKeys}.java   the only Java we own
 openchemlib/                          git submodule, upstream OpenChemLib source
 scripts/build-wasm.mjs                finds a JDK, runs Maven, then binaryen
 scripts/check-wasm.mjs                compares the committed module with the one the sources produce
@@ -101,6 +101,20 @@ Empty is the goal: an empty overlay is what makes an OpenChemLib upgrade a submo
 added here has to be reconciled against upstream at every release from then on. Add one only when an
 upstream source genuinely cannot be compiled by TeaVM, say why at the top of the file, and open an
 issue upstream.
+
+## The screen dictionary
+
+`ScreenKeys.java` freezes the 512 key fragments of `getScreen`; `Screen.java` runs them through
+FragFp's own loop, `SSSearcher` in `cIndexMatchMode`. Changing, adding or reordering a key changes
+every stored screen, so the list only changes in a major release, and `screen.test.ts` cross-checks
+every word against `openchemlib` matching each key.
+
+Queries are screened on the fragment `SSSearcher` matches, which `SSSearcherWithIndex` does not do
+yet: exclude groups are removed with `copyMoleculeByAtoms(…, true)`, a "match formal bond order"
+bond gives no bits (Actelion/openchemlib#177), and a key's atom ring sizes are tested in
+`Screen.java` because `SSSearcher` skips them when the molecule is a fragment (#178). This is our
+own Java, not an overlay. Once OpenChemLib fixes both, the workarounds can go: only query bits can
+change, never a stored molecule's.
 
 ## What the tests guarantee
 

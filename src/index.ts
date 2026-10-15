@@ -4,6 +4,8 @@ import {
   buildNoStereoIdCodes,
   buildNoStereoTautomerHashes,
   buildNoStereoTautomerIdCodes,
+  buildQueryWords,
+  buildScreens,
 } from './scan.ts';
 import type { HashOptions } from './types.ts';
 import { DEFAULT_MAX_TAUTOMERS, INDEX_WORDS, NO_ID_CODE } from './types.ts';
@@ -83,6 +85,81 @@ export function getIndexes(idCodes: string[]): Int32Array[] {
     indexes[i] = all.subarray(i * INDEX_WORDS, (i + 1) * INDEX_WORDS);
   }
   return indexes;
+}
+
+/**
+ * Builds the 512-bit screen of one idcode, as sixteen 32-bit words: bit i is set when key i of the
+ * screen dictionary is a substructure of the molecule.
+ *
+ * The screen sits next to the FragFp fingerprint of {@link getIndex}. A molecule is a candidate for
+ * a query only if it holds every bit of {@link getQueryIndex} in its fingerprint and every bit of
+ * {@link getQueryScreen} in its screen; requiring both lets through about a sixth of the
+ * non-matching molecules FragFp alone lets through. The dictionary is 512 OpenChemLib query
+ * fragments, matched the way FragFp matches its own keys, and a screen costs about 0.7 times a
+ * fingerprint.
+ *
+ * ```js
+ * const isCandidate = (query, molecule) =>
+ *   query.every((word, i) => (word & molecule[i]) === word);
+ * isCandidate(getQueryScreen(query), getScreen(idCode));
+ * ```
+ * @param idCode - The molecule to screen, as an idcode.
+ * @returns Sixteen words. An idcode that will not parse gives sixteen zeros, which no non-empty
+ * query screen is a subset of.
+ */
+export function getScreen(idCode: string): Int32Array {
+  const result = new Int32Array(INDEX_WORDS);
+  buildScreens([idCode], result, 0, 1);
+  return result;
+}
+
+/**
+ * Builds the 512-bit screen of every idcode, sixteen 32-bit words each.
+ *
+ * See {@link getScreen}. The screens are written into one buffer and returned as a view per
+ * molecule, each 8-byte aligned, as {@link getIndexes} does.
+ * @param idCodes - The molecules to screen, as idcodes.
+ * @returns One sixteen-word view per idcode, in order.
+ */
+export function getScreens(idCodes: string[]): Int32Array[] {
+  const all = new Int32Array(idCodes.length * INDEX_WORDS);
+  buildScreens(idCodes, all, 0, idCodes.length);
+  const screens = new Array<Int32Array>(idCodes.length);
+  for (let i = 0; i < idCodes.length; i++) {
+    screens[i] = all.subarray(i * INDEX_WORDS, (i + 1) * INDEX_WORDS);
+  }
+  return screens;
+}
+
+/**
+ * Builds the screen of a query: the bits every molecule the query matches has in its
+ * {@link getScreen} screen.
+ *
+ * The query is screened on the fragment OpenChemLib's substructure search actually matches, so an
+ * exclude group cutting an aromatic ring and the atom ring sizes of the query are taken into account
+ * as the search takes them; a query with a "match formal bond order" bond gets no bits.
+ * @param idCodeQuery - The query, as an idcode; read as a fragment whatever its own fragment flag.
+ * @returns Sixteen words.
+ * @throws {Error} If the query cannot be parsed.
+ */
+export function getQueryScreen(idCodeQuery: string): Int32Array {
+  return buildQueryWords('screen', idCodeQuery);
+}
+
+/**
+ * Builds the FragFp fingerprint of a query: the bits every molecule the query matches has in its
+ * {@link getIndex} fingerprint.
+ *
+ * It equals OpenChemLib's own query fingerprint, except for the queries that one wrongly rejects
+ * true matches of: an exclude group cutting an aromatic ring, or a "match formal bond order" bond
+ * (Actelion/openchemlib#177). The first is fingerprinted on the fragment the search matches; the
+ * second gets no bits.
+ * @param idCodeQuery - The query, as an idcode; read as a fragment whatever its own fragment flag.
+ * @returns Sixteen words.
+ * @throws {Error} If the query cannot be parsed.
+ */
+export function getQueryIndex(idCodeQuery: string): Int32Array {
+  return buildQueryWords('index', idCodeQuery);
 }
 
 /**

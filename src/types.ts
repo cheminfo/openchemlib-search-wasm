@@ -190,6 +190,17 @@ export interface OCLSearch {
       from: number,
       to: number,
     ) => number;
+    /** Returns how many molecules in the range were parsed and screened. */
+    getScreens: (
+      idCodes: string[],
+      result: Int32Array,
+      from: number,
+      to: number,
+    ) => number;
+    /** Writes the query's sixteen screen words into `result`. */
+    getQueryScreen: (idCodeQuery: string, result: Int32Array) => void;
+    /** Writes the query's sixteen FragFp words into `result`. */
+    getQueryIndex: (idCodeQuery: string, result: Int32Array) => void;
     /** Returns how many molecules in the range were hashed. */
     getNoStereoTautomerHashes: (
       idCodes: string[],
@@ -229,7 +240,7 @@ export interface OCLSearch {
   };
 }
 
-/** How many 32-bit words one molecule's FragFp fingerprint occupies. */
+/** How many 32-bit words one molecule's FragFp fingerprint, or its screen, occupies. */
 export const INDEX_WORDS = 16;
 
 /** What every hash function takes. */

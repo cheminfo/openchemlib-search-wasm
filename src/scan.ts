@@ -152,6 +152,51 @@ export function buildIndexes(
 }
 
 /**
+ * Screens `idCodes[from .. to)` into `result`, sixteen words per molecule.
+ *
+ * Fails like {@link buildIndexes}: sixteen zeros for an idcode the WASM side cannot read.
+ * @param idCodes - The molecules to screen.
+ * @param result - The caller's buffer, `16 * idCodes.length` words long.
+ * @param from - The first index to screen.
+ * @param to - One past the last index to screen.
+ * @returns How many molecules were parsed and screened.
+ */
+export function buildScreens(
+  idCodes: string[],
+  result: Int32Array,
+  from: number,
+  to: number,
+): number {
+  return Search.getScreens(idCodes, result, from, to);
+}
+
+/**
+ * Builds what every molecule a query matches has: its FragFp words, or its screen words.
+ * @param kind - `'index'` for the FragFp words, `'screen'` for the screen words.
+ * @param idCodeQuery - The query, as an idcode.
+ * @returns Sixteen words.
+ * @throws {Error} If the query cannot be parsed.
+ */
+export function buildQueryWords(
+  kind: 'index' | 'screen',
+  idCodeQuery: string,
+): Int32Array {
+  const result = new Int32Array(INDEX_WORDS);
+  try {
+    if (kind === 'index') {
+      Search.getQueryIndex(idCodeQuery, result);
+    } else {
+      Search.getQueryScreen(idCodeQuery, result);
+    }
+  } catch (error) {
+    throw new Error(`"${idCodeQuery}" is not a valid query idcode`, {
+      cause: error,
+    });
+  }
+  return result;
+}
+
+/**
  * Hashes `idCodes[from .. to)` into `result`, one no-stereo tautomer hash per molecule.
  *
  * A molecule that cannot be read gets `NO_HASH`, which is also what OpenChemLib returns for one it

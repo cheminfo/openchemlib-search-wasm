@@ -19,12 +19,12 @@ import org.teavm.jso.typedarrays.Uint8Array;
 
 /**
  * The whole public surface of openchemlib-search-wasm: batch substructure search, batch similarity
- * search, batch FragFp fingerprinting and batch structure hashing over a range of an array of
- * idcodes.
+ * search, batch FragFp fingerprinting, batch screening and batch structure hashing over a range of
+ * an array of idcodes, plus a query's FragFp and screen.
  *
- * <p>All five write into a caller-owned JS typed array as they go, so a caller that backs it with a
- * {@code SharedArrayBuffer} and splits the idcodes across workers can render progress while the scan
- * runs. Each index is written by exactly one worker, so no atomics are needed.
+ * <p>The batch functions write into a caller-owned JS typed array as they go, so a caller that backs
+ * it with a {@code SharedArrayBuffer} and splits the idcodes across workers can render progress while
+ * the scan runs. Each index is written by exactly one worker, so no atomics are needed.
  *
  * <p>The idcodes arrive as a {@link JSArrayReader}, read one element at a time, rather than as a
  * {@code String[]}, which TeaVM converts whole before the method body starts. Reading lazily costs
@@ -204,6 +204,77 @@ public final class Search {
       }
     }
     return built;
+  }
+
+  /**
+   * Builds the 512-bit screen of {@code idCodes[from .. to)}, sixteen 32-bit words per molecule: bit
+   * i is set when key i of the screen dictionary ({@link ScreenKeys}) is a substructure of the
+   * molecule, in the word layout of {@link #getIndexes}.
+   *
+   * <p>A prescreen that requires both the query's FragFp and its screen lets through about a sixth
+   * of the non-matching molecules FragFp alone lets through. A screen costs about 0.7 times a FragFp
+   * fingerprint.
+   *
+   * @param idCodes the molecules to screen
+   * @param result written as the scan advances, sixteen words at {@code 16 * i}. Must hold
+   *     {@code 16 * idCodes.length} words. A molecule whose idcode will not parse gets sixteen
+   *     zeros, which no non-empty query screen is a subset of.
+   * @param from the first index to screen
+   * @param to one past the last index to screen
+   * @return how many molecules in the range were parsed and screened
+   */
+  @JSExport
+  public static int getScreens(
+      JSArrayReader<JSString> idCodes, Int32Array result, int from, int to) {
+    IDCodeParserWithoutCoordinateInvention parser = new IDCodeParserWithoutCoordinateInvention();
+    StereoMolecule molecule = new StereoMolecule();
+    int built = 0;
+    for (int i = from; i < to; i++) {
+      int[] screen =
+          parse(parser, molecule, idCodes.get(i).stringValue())
+              ? Screen.DICTIONARY.ofMolecule(molecule)
+              : null;
+      write(screen, result, i * INDEX_WORDS);
+      if (screen != null) {
+        built++;
+      }
+    }
+    return built;
+  }
+
+  /**
+   * Writes the screen of a query, sixteen 32-bit words: the bits every molecule the query matches
+   * has in its {@link #getScreens} screen.
+   *
+   * @param idCodeQuery the query, as an idcode; parsed as a fragment whatever its own fragment flag
+   * @param result receives the sixteen words
+   */
+  @JSExport
+  public static void getQueryScreen(String idCodeQuery, Int32Array result) {
+    write(Screen.DICTIONARY.ofQuery(parseFragment(idCodeQuery)), result, 0);
+  }
+
+  /**
+   * Writes the FragFp fingerprint of a query, sixteen 32-bit words: the bits every molecule the
+   * query matches has in its {@link #getIndexes} fingerprint.
+   *
+   * <p>OpenChemLib's own query fingerprint rejects true matches of a query with an exclude group
+   * cutting an aromatic ring or with a "match formal bond order" bond
+   * (Actelion/openchemlib#177). This one is built on the fragment SSSearcher matches, as {@link
+   * Screen} builds every query screen, and equals OpenChemLib's for every other query.
+   *
+   * @param idCodeQuery the query, as an idcode; parsed as a fragment whatever its own fragment flag
+   * @param result receives the sixteen words
+   */
+  @JSExport
+  public static void getQueryIndex(String idCodeQuery, Int32Array result) {
+    write(Screen.FRAGFP.ofQuery(parseFragment(idCodeQuery)), result, 0);
+  }
+
+  private static void write(int[] words, Int32Array result, int base) {
+    for (int word = 0; word < INDEX_WORDS; word++) {
+      result.set(base + word, words == null ? 0 : words[word]);
+    }
   }
 
   /**
