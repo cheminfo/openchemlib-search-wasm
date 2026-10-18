@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.0](https://github.com/cheminfo/openchemlib-search-wasm/compare/v2.0.0...v2.1.0) (2026-10-18)
+
+
+### Features
+
+* add a screen of 512 query fragments next to FragFp ([92d1e8b](https://github.com/cheminfo/openchemlib-search-wasm/commit/92d1e8ba1c31201e308c84bb3e133acb7699165b))
+* add function keys, molecule records and multi-idcode queries ([6862f4f](https://github.com/cheminfo/openchemlib-search-wasm/commit/6862f4f928eeb594d1e9d525b68685fb55ea25ed))
+
 ## [2.0.0](https://github.com/cheminfo/openchemlib-search-wasm/compare/v1.2.0...v2.0.0) (2026-10-01)
 
 
