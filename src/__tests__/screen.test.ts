@@ -7,10 +7,12 @@ import { expect, test } from 'vitest';
 import {
   INDEX_WORDS,
   SubstructureResult,
+  getFragFpKeys,
   getIndexes,
   getQueryIndex,
   getQueryScreen,
   getScreen,
+  getScreenKeys,
   getScreens,
   substructureSearch,
 } from '../index.ts';
@@ -125,6 +127,32 @@ const SOUNDNESS_QUERIES = [
 
 test('the dictionary holds 512 keys', () => {
   expect(keys).toHaveLength(512);
+});
+
+test('getScreenKeys returns the dictionary, in bit order', () => {
+  const screenKeys = getScreenKeys();
+
+  expect(screenKeys).toHaveLength(512);
+  expect(screenKeys).toStrictEqual(keys);
+});
+
+test('getFragFpKeys returns the keys of openchemlib-js’s FragFp, in bit order', () => {
+  const fragFpKeys = getFragFpKeys();
+
+  expect(fragFpKeys).toHaveLength(512);
+  // openchemlib-js returns a GWT array, which carries properties of its own.
+  expect(fragFpKeys).toStrictEqual(
+    Array.from(OCL.SSSearcherWithIndex.getKeyIDCode()),
+  );
+});
+
+test('every key of both dictionaries parses as a fragment', () => {
+  const unparsed = [...getFragFpKeys(), ...getScreenKeys()].filter((key) => {
+    const fragment = OCL.Molecule.fromIDCode(key, false);
+    return !fragment.isFragment() || fragment.getAllAtoms() === 0;
+  });
+
+  expect(unparsed).toStrictEqual([]);
 });
 
 // The cross-check that makes a change in OpenChemLib's matching a red test: the screen is nothing

@@ -46,3 +46,15 @@ export function ratio(value: number): string {
 export function percent(part: number, whole: number): string {
   return whole === 0 ? '0.0%' : `${((part / whole) * 100).toFixed(1)}%`;
 }
+
+/**
+ * Formats a share that may be tiny, with two significant digits.
+ * @param part - The part.
+ * @param whole - The whole.
+ * @returns The share, as a percentage: `45%`, `1.2%`, `0.013%`.
+ */
+export function share(part: number, whole: number): string {
+  if (whole === 0 || part === 0) return '0%';
+  const value = (part / whole) * 100;
+  return `${Number(value.toPrecision(2)).toLocaleString('en-US', { maximumFractionDigits: 6 })}%`;
+}

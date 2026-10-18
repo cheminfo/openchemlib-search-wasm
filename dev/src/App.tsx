@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { EngineChoice } from './components/Controls.tsx';
 import { Controls } from './components/Controls.tsx';
 import { Hits } from './components/Hits.tsx';
+import { Nav } from './components/Nav.tsx';
 import { QueryBar } from './components/QueryBar.tsx';
 import { Stats } from './components/Stats.tsx';
 import type { Corpus } from './corpus.ts';
@@ -175,6 +176,7 @@ function Shell({ children }: { children: ReactNode }) {
   return (
     <main>
       <h1>openchemlib-search-wasm</h1>
+      <Nav current="search" />
       {children}
     </main>
   );

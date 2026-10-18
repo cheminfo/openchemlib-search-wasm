@@ -13,6 +13,26 @@ another number. `npm run dataset` is not optional: without it the page says so a
 else. Pass a row count (`node scripts/build-dataset.mjs 20000`) for a smaller corpus; re-running it
 without one rebuilds the whole table.
 
+## Function keys
+
+`/functions` reviews the dictionary of `openchemlib-search-wasm/function-keys`: the 512 stored keys,
+the 22 equal to an existing plane, and the 3,077 computed on demand. The keys, their names and their
+fragments come from the package; the review data — counts on 1M PubChem molecules, the comparison
+with RDKit, overlaps, what each key absorbed — from `dev/public/function-keys.json`, which the
+selection pipeline exports (gitignored). Without it the page still lists and runs every key.
+
+- Keys are grouped by category and subcategory. A row draws the key's query and gives its plane, its
+  name and synonyms, its sources and flags, its share of the 1M molecules, its cost per molecule and
+  the verdict against RDKit.
+- The search box finds names as `searchFunctionKeys` does, and also matches the SMARTS.
+- Opening a key shows its SMARTS, its fragments, the keys it overlaps or absorbed, and why it is not
+  stored. The key then runs over the corpus in workers: its share there, and its first 12 matches
+  with the matched atoms shaded. The shading comes from `openchemlib-js`, which lacks the
+  exclude-group fix of `java/overlay`, so a key with an exclude group in a ring may show unshaded
+  matches.
+- The address carries the filter (`?q=`, `tier`, `flag`, `category`, `key`), so a link opens the
+  same view.
+
 ## Why the headers
 
 The dev server sends `Cross-Origin-Opener-Policy: same-origin` and

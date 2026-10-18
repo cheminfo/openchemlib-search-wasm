@@ -6,6 +6,7 @@ import {
   buildNoStereoTautomerIdCodes,
   buildQueryWords,
   buildScreens,
+  readKeys,
 } from './scan.ts';
 import type { HashOptions } from './types.ts';
 import { DEFAULT_MAX_TAUTOMERS, INDEX_WORDS, NO_ID_CODE } from './types.ts';
@@ -16,14 +17,28 @@ export { hashToHex, hexToHash } from './hex.ts';
 export { strongHash } from './strongHash.ts';
 export { similaritySearch } from './similaritySearch.ts';
 export {
+  getMoleculeRecords,
+  getMoleculeSizes,
+  getQueryAtomFloor,
+} from './records.ts';
+export {
+  getFunction,
+  getFunctionKeyFragments,
+  getFunctions,
+} from './functions.ts';
+export {
   DEFAULT_MAX_TAUTOMERS,
   INDEX_WORDS,
   NO_HASH,
   NO_ID_CODE,
+  RECORD_WORDS,
 } from './types.ts';
 export type { LogHandler, LogStream } from './wasm/log.ts';
 export type {
   HashOptions,
+  MoleculeRecords,
+  MoleculeRecordsOptions,
+  MoleculeSizes,
   ResultBuffer,
   SearchMode,
   SearchOptions,
@@ -160,6 +175,36 @@ export function getQueryScreen(idCodeQuery: string): Int32Array {
  */
 export function getQueryIndex(idCodeQuery: string): Int32Array {
   return buildQueryWords('index', idCodeQuery);
+}
+
+/**
+ * Returns the 512 key fragments of FragFp, in bit order: bit i of {@link getIndex} is set when key i
+ * is a substructure of the molecule. They are OpenChemLib's own keys, the list `openchemlib`'s
+ * `SSSearcherWithIndex.getKeyIDCode()` returns.
+ *
+ * Bit i sits in word `i >> 5`, the first key in the highest bit of word 0:
+ *
+ * ```js
+ * const keys = getFragFpKeys();
+ * const index = getIndex(idCode);
+ * const held = keys.filter((key, i) => index[i >> 5] & (1 << (31 - (i & 31))));
+ * ```
+ * @returns 512 idcodes, each a query fragment, in bit order. The array is the caller's own.
+ */
+export function getFragFpKeys(): string[] {
+  return readKeys('index');
+}
+
+/**
+ * Returns the 512 key fragments of the screen, in bit order: bit i of {@link getScreen} is set when
+ * key i is a substructure of the molecule. The words are laid out as {@link getFragFpKeys} shows.
+ *
+ * The list is frozen: changing, adding or reordering a key changes every stored screen, so it only
+ * changes in a major release.
+ * @returns 512 idcodes, each a query fragment, in bit order. The array is the caller's own.
+ */
+export function getScreenKeys(): string[] {
+  return readKeys('screen');
 }
 
 /**

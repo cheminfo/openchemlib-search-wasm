@@ -171,6 +171,40 @@ export function buildScreens(
 }
 
 /**
+ * Builds the function bits of `idCodes[from .. to)` into `result`, sixteen words per molecule.
+ *
+ * Fails like {@link buildIndexes}: sixteen zeros for an idcode the WASM side cannot read.
+ * @param idCodes - The molecules to read.
+ * @param result - The caller's buffer, `16 * idCodes.length` words long.
+ * @param from - The first index to read.
+ * @param to - One past the last index to read.
+ * @returns How many molecules were parsed and read.
+ */
+export function buildFunctions(
+  idCodes: string[],
+  result: Int32Array,
+  from: number,
+  to: number,
+): number {
+  return recoveringFromTraps(
+    (first, last) => Search.getFunctions(idCodes, result, first, last),
+    (index) => result.fill(0, index * INDEX_WORDS, (index + 1) * INDEX_WORDS),
+    from,
+    to,
+  );
+}
+
+/**
+ * Reads the fragments of the 512 stored function keys, in bit order.
+ * @returns Per key, its fragment idcodes.
+ */
+export function readFunctionKeys(): string[][] {
+  return Search.getFunctionKeys()
+    .split('\n')
+    .map((key) => key.split(' '));
+}
+
+/**
  * Builds what every molecule a query matches has: its FragFp words, or its screen words.
  * @param kind - `'index'` for the FragFp words, `'screen'` for the screen words.
  * @param idCodeQuery - The query, as an idcode.
@@ -194,6 +228,17 @@ export function buildQueryWords(
     });
   }
   return result;
+}
+
+/**
+ * Reads the key fragments behind the bits of the FragFp words, or of the screen words.
+ * @param kind - `'index'` for FragFp's keys, `'screen'` for the screen's.
+ * @returns 512 idcodes, in bit order.
+ */
+export function readKeys(kind: 'index' | 'screen'): string[] {
+  const joined =
+    kind === 'index' ? Search.getFragFpKeys() : Search.getScreenKeys();
+  return joined.split('\n');
 }
 
 /**
@@ -374,7 +419,7 @@ export function buildNoStereoTautomerIdCodes(
  * @param to - One past the last index to handle.
  * @returns How many molecules were handled.
  */
-function recoveringFromTraps(
+export function recoveringFromTraps(
   call: (from: number, to: number) => number,
   markUnreadable: (index: number) => void,
   from: number,

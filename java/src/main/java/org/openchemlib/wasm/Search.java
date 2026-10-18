@@ -3,6 +3,7 @@ package org.openchemlib.wasm;
 import com.actelion.research.chem.Canonizer;
 import com.actelion.research.chem.CanonizerUtil;
 import com.actelion.research.chem.IDCodeParserWithoutCoordinateInvention;
+import com.actelion.research.chem.MolecularFormula;
 import com.actelion.research.chem.MoleculeNeutralizer;
 import com.actelion.research.chem.SSSearcher;
 import com.actelion.research.chem.SSSearcherWithIndex;
@@ -14,13 +15,15 @@ import org.teavm.jso.core.JSArrayReader;
 import org.teavm.jso.core.JSString;
 import org.teavm.jso.typedarrays.BigInt64Array;
 import org.teavm.jso.typedarrays.Float32Array;
+import org.teavm.jso.typedarrays.Float64Array;
 import org.teavm.jso.typedarrays.Int32Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 
 /**
  * The whole public surface of openchemlib-search-wasm: batch substructure search, batch similarity
- * search, batch FragFp fingerprinting, batch screening and batch structure hashing over a range of
- * an array of idcodes, plus a query's FragFp and screen.
+ * search, batch FragFp fingerprinting, batch screening, batch function keys, batch structure hashing
+ * and batch molecule records over a range of an array of idcodes, plus a query's FragFp, screen and
+ * atom floor, and the key fragments behind the bits of all three.
  *
  * <p>The batch functions write into a caller-owned JS typed array as they go, so a caller that backs
  * it with a {@code SharedArrayBuffer} and splits the idcodes across workers can render progress while
@@ -72,12 +75,12 @@ public final class Search {
    * call. That parse is ~13 µs, which is nothing against a batch of thousands but 63% of the cost of
    * a batch of one, and a caller stopping at the first few matches asks for exactly such batches.
    *
-   * <p>Holding the fragment also keeps the helper arrays SSSearcher computes on it. Nothing outside
+   * <p>Holding the fragments also keeps the helper arrays SSSearcher computes on them. Nothing outside
    * this class can reach these, and a scan is synchronous, so one entry is enough and needs no lock.
    */
   private static String cachedFragmentQuery;
 
-  private static StereoMolecule cachedFragment;
+  private static StereoMolecule[] cachedFragments;
 
   /** The last similarity query's fingerprint. Building one is ~947 µs, so this is worth far more. */
   private static String cachedIndexQuery;
@@ -87,10 +90,12 @@ public final class Search {
   private Search() {}
 
   /**
-   * Tests a query fragment against {@code idCodes[from .. to)}, writing one status byte per
-   * molecule.
+   * Tests a query fragment, or any of several, against {@code idCodes[from .. to)}, writing one
+   * status byte per molecule.
    *
-   * @param idCodeQuery the query, as an idcode; parsed as a fragment whatever its own fragment flag
+   * @param idCodeQuery the query, as an idcode, or several idcodes joined by {@code '\n'}: a molecule
+   *     then matches when it holds any of them. Each is parsed as a fragment whatever its own
+   *     fragment flag.
    * @param idCodes the molecules to test
    * @param result written as the scan advances: 1 = match, 2 = no match, 3 = unparsable idcode.
    *     Indexed by the molecule's position in {@code idCodes}, not by its position in the range.
@@ -105,15 +110,16 @@ public final class Search {
       Uint8Array result,
       int from,
       int to) {
+    StereoMolecule[] fragments = parseFragments(idCodeQuery);
     SSSearcher searcher = new SSSearcher();
-    searcher.setFragment(parseFragment(idCodeQuery));
+    searcher.setFragment(fragments[0]);
     IDCodeParserWithoutCoordinateInvention parser = new IDCodeParserWithoutCoordinateInvention();
     StereoMolecule molecule = new StereoMolecule();
     int matched = 0;
     for (int i = from; i < to; i++) {
       byte code =
           parse(parser, molecule, idCodes.get(i).stringValue())
-              ? match(searcher, molecule)
+              ? match(searcher, molecule, fragments)
               : UNPARSABLE;
       if (code == MATCH) {
         matched++;
@@ -269,6 +275,75 @@ public final class Search {
   @JSExport
   public static void getQueryIndex(String idCodeQuery, Int32Array result) {
     write(Screen.FRAGFP.ofQuery(parseFragment(idCodeQuery)), result, 0);
+  }
+
+  /**
+   * The 512 key fragments of FragFp, OpenChemLib's {@code SSSearcherWithIndex.cKeyIDCode}, in bit
+   * order: bit i of a {@link #getIndexes} fingerprint is set when key i is a substructure of the
+   * molecule.
+   *
+   * @return the key idcodes, joined by {@code '\n'}, which no idcode contains
+   */
+  @JSExport
+  public static String getFragFpKeys() {
+    return String.join("\n", SSSearcherWithIndex.cKeyIDCode);
+  }
+
+  /**
+   * The 512 key fragments of the screen, {@link ScreenKeys#IDCODES}, in bit order: bit i of a {@link
+   * #getScreens} screen is set when key i is a substructure of the molecule.
+   *
+   * @return the key idcodes, joined by {@code '\n'}, which no idcode contains
+   */
+  @JSExport
+  public static String getScreenKeys() {
+    return String.join("\n", ScreenKeys.IDCODES);
+  }
+
+  /**
+   * Builds the 512 function bits of {@code idCodes[from .. to)}, sixteen 32-bit words per molecule:
+   * bit i is set when any fragment of stored function key i ({@link FunctionKeys}) is a substructure
+   * of the molecule, in the word layout of {@link #getIndexes}.
+   *
+   * <p>Each molecule's FragFp and screen are built too, because a key's fragment is only tried on a
+   * molecule that holds its query words; {@link #getMoleculeRecords} builds all three at once.
+   *
+   * @param idCodes the molecules to read
+   * @param result written as the scan advances, sixteen words at {@code 16 * i}. Must hold {@code
+   *     16 * idCodes.length} words. A molecule whose idcode will not parse gets sixteen zeros.
+   * @param from the first index to read
+   * @param to one past the last index to read
+   * @return how many molecules in the range were parsed and read
+   */
+  @JSExport
+  public static int getFunctions(
+      JSArrayReader<JSString> idCodes, Int32Array result, int from, int to) {
+    SSSearcherWithIndex indexer = new SSSearcherWithIndex();
+    IDCodeParserWithoutCoordinateInvention parser = new IDCodeParserWithoutCoordinateInvention();
+    StereoMolecule molecule = new StereoMolecule();
+    int built = 0;
+    for (int i = from; i < to; i++) {
+      int[] functions = null;
+      if (parse(parser, molecule, idCodes.get(i).stringValue())) {
+        int[] index = indexer.createIndex(molecule);
+        int[] screen = Screen.DICTIONARY.ofMolecule(molecule);
+        functions = Functions.STORED.ofMolecule(molecule, index, screen);
+        built++;
+      }
+      write(functions, result, i * INDEX_WORDS);
+    }
+    return built;
+  }
+
+  /**
+   * The fragments of the 512 stored function keys, {@link FunctionKeys#IDCODES}, in bit order: bit
+   * i of a {@link #getFunctions} word set is set when any fragment of key i is a substructure.
+   *
+   * @return per key its fragment idcodes joined by a space, the keys joined by {@code '\n'}
+   */
+  @JSExport
+  public static String getFunctionKeys() {
+    return Functions.keyIDCodes();
   }
 
   private static void write(int[] words, Int32Array result, int base) {
@@ -431,6 +506,224 @@ public final class Search {
         idCodes, result, tautomerCounts, largestFragmentOnly, from, to, true);
   }
 
+  /**
+   * How many 32-bit words one molecule's record holds: its FragFp, its screen, then its function
+   * bits.
+   */
+  private static final int RECORD_WORDS = 3 * INDEX_WORDS;
+
+  /**
+   * Computes everything a molecule table stores about {@code idCodes[from .. to)}, parsing each
+   * idcode once: its canonical idcode, its FragFp, its screen and its function bits, its atom count
+   * and relative weight, and its no-stereo and tautomer hashes.
+   *
+   * <p>Each value is the one the dedicated export computes — {@link #getIndexes}, {@link
+   * #getScreens}, {@link #getFunctions}, {@link #getNoStereoHashes}, {@link
+   * #getNoStereoTautomerHashes} — except the
+   * tautomer hash of a molecule whose enumeration reached {@code maxTautomers}, or could not be
+   * canonized: that key would depend on where the enumeration stopped, so the molecule gets its
+   * no-stereo hash instead, which is canonical.
+   *
+   * <p>Every output is indexed by the molecule's position in {@code idCodes}, not by its position in
+   * the range. A molecule whose idcode will not parse, or whose computation throws, gets {@code ""},
+   * zeros, 0 atoms, a NaN weight, hashes 0 and a tautomer count of 0, and the batch carries on.
+   *
+   * @param idCodes the molecules to read
+   * @param canonical receives the canonical idcode, as {@code openchemlib-js} gives it for {@code
+   *     Molecule.fromIDCode(idCode).getIDCode()}
+   * @param words receives 48 words at {@code 48 * i}: the FragFp, the screen, then the function
+   *     bits
+   * @param atomCounts receives {@code getAllAtoms()}, explicit hydrogens included
+   * @param weights receives OpenChemLib's relative molecular weight
+   * @param noStereoHashes receives the no-stereo hash
+   * @param tautomerHashes receives the tautomer hash, or the no-stereo hash where that is not
+   *     canonical
+   * @param tautomerCounts receives how many tautomers were enumerated
+   * @param maxTautomers the ceiling on that enumeration
+   * @param from the first index to read
+   * @param to one past the last index to read
+   * @return how many molecules in the range were read
+   */
+  @JSExport
+  public static int getMoleculeRecords(
+      JSArrayReader<JSString> idCodes,
+      JSArray<JSString> canonical,
+      Int32Array words,
+      Int32Array atomCounts,
+      Float64Array weights,
+      BigInt64Array noStereoHashes,
+      BigInt64Array tautomerHashes,
+      Int32Array tautomerCounts,
+      int maxTautomers,
+      int from,
+      int to) {
+    TautomerHelper.setMaxTautomers(maxTautomers);
+    SSSearcherWithIndex indexer = new SSSearcherWithIndex();
+    IDCodeParserWithoutCoordinateInvention parser = new IDCodeParserWithoutCoordinateInvention();
+    StereoMolecule molecule = new StereoMolecule();
+    int read = 0;
+    for (int i = from; i < to; i++) {
+      MoleculeRecord record =
+          parse(parser, molecule, idCodes.get(i).stringValue())
+              ? recordOf(molecule, indexer, maxTautomers)
+              : null;
+      if (record == null) {
+        record = MoleculeRecord.UNREADABLE;
+      } else {
+        read++;
+      }
+      canonical.set(i, JSString.valueOf(record.idCode));
+      write(record.index, words, i * RECORD_WORDS);
+      write(record.screen, words, i * RECORD_WORDS + INDEX_WORDS);
+      write(record.functions, words, i * RECORD_WORDS + 2 * INDEX_WORDS);
+      atomCounts.set(i, record.atoms);
+      weights.set(i, record.weight);
+      noStereoHashes.set(i, record.noStereoHash);
+      tautomerHashes.set(i, record.tautomerHash);
+      tautomerCounts.set(i, record.tautomerCount);
+    }
+    return read;
+  }
+
+  /**
+   * Writes the atom count and the relative weight of {@code idCodes[from .. to)} — exactly what
+   * {@link #getMoleculeRecords} writes there, and nothing else, so it costs one parse and one
+   * formula per molecule.
+   *
+   * @param idCodes the molecules to read
+   * @param atomCounts receives {@code getAllAtoms()}, explicit hydrogens included, or 0 for a
+   *     molecule that cannot be read
+   * @param weights receives OpenChemLib's relative molecular weight, or NaN for a molecule that
+   *     cannot be read
+   * @param from the first index to read
+   * @param to one past the last index to read
+   * @return how many molecules in the range were read
+   */
+  @JSExport
+  public static int getMoleculeSizes(
+      JSArrayReader<JSString> idCodes,
+      Int32Array atomCounts,
+      Float64Array weights,
+      int from,
+      int to) {
+    IDCodeParserWithoutCoordinateInvention parser = new IDCodeParserWithoutCoordinateInvention();
+    StereoMolecule molecule = new StereoMolecule();
+    int read = 0;
+    for (int i = from; i < to; i++) {
+      int atoms = 0;
+      double weight = Double.NaN;
+      if (parse(parser, molecule, idCodes.get(i).stringValue())) {
+        try {
+          weight = weightOf(molecule);
+          atoms = molecule.getAllAtoms();
+          read++;
+        } catch (Throwable error) {
+          weight = Double.NaN;
+        }
+      }
+      atomCounts.set(i, atoms);
+      weights.set(i, weight);
+    }
+    return read;
+  }
+
+  /**
+   * The fewest atoms a molecule needs to hold the query as a substructure: the query's atoms once
+   * its exclude groups are removed, plain hydrogens aside. Every one of them maps onto a distinct
+   * atom of a match, so a molecule whose {@code getAllAtoms()} is below this cannot match; a plain
+   * hydrogen of the query may match an implicit one, so it does not count.
+   *
+   * @param idCodeQuery the query, as an idcode; read as a fragment whatever its own fragment flag
+   * @return the floor, or 0 for a query with no atoms
+   * @throws IllegalArgumentException if the idcode is empty or not ASCII
+   */
+  @JSExport
+  public static int getQueryAtomFloor(String idCodeQuery) {
+    if (!isAscii(idCodeQuery)) {
+      throw new IllegalArgumentException("cannot parse the query idcode");
+    }
+    StereoMolecule query = new StereoMolecule();
+    if (!parse(new IDCodeParserWithoutCoordinateInvention(), query, idCodeQuery)) {
+      return 0;
+    }
+    query.setFragment(true);
+    StereoMolecule matched = query.getCompactCopy();
+    // Deletes the exclude-group atoms; wildcards and atom lists stay, as atoms.
+    matched.removeQueryFeatures();
+    int floor = 0;
+    for (int atom = 0; atom < matched.getAllAtoms(); atom++) {
+      if (matched.getAtomicNo(atom) != 1 || matched.getAtomMass(atom) != 0) {
+        floor++;
+      }
+    }
+    return floor;
+  }
+
+  /** What {@link #getMoleculeRecords} computes for one molecule. */
+  private static final class MoleculeRecord {
+    static final MoleculeRecord UNREADABLE = new MoleculeRecord();
+
+    String idCode = "";
+    int[] index;
+    int[] screen;
+    int[] functions;
+    int atoms;
+    double weight = Double.NaN;
+    long noStereoHash;
+    long tautomerHash;
+    int tautomerCount;
+  }
+
+  /**
+   * Computes one molecule's record, every value from the one parsed molecule.
+   *
+   * @param molecule the parsed molecule; the canonical forms are built on copies of it
+   * @param indexer builds the FragFp
+   * @param maxTautomers the ceiling on the tautomer enumeration
+   * @return the record, or null if computing it threw
+   */
+  private static MoleculeRecord recordOf(
+      StereoMolecule molecule, SSSearcherWithIndex indexer, int maxTautomers) {
+    try {
+      MoleculeRecord record = new MoleculeRecord();
+      record.atoms = molecule.getAllAtoms();
+      record.idCode = Canonical.idCodeOf(molecule);
+      if (record.idCode == null) {
+        return null;
+      }
+      record.noStereoHash = hashOf(noStereoIdCode(molecule, false));
+      long tautomerHash = hashOf(noStereoTautomerIdCode(molecule, false));
+      record.tautomerCount = lastTautomerCount;
+      record.tautomerHash =
+          tautomerHash == 0 || lastTautomerCount >= maxTautomers
+              ? record.noStereoHash
+              : tautomerHash;
+      record.weight = weightOf(molecule);
+      record.index = indexer.createIndex(molecule);
+      record.screen = Screen.DICTIONARY.ofMolecule(molecule);
+      record.functions = Functions.STORED.ofMolecule(molecule, record.index, record.screen);
+      return record;
+    } catch (Throwable error) {
+      return null;
+    }
+  }
+
+  private static double weightOf(StereoMolecule molecule) {
+    return new MolecularFormula(molecule).getRelativeWeight();
+  }
+
+  private static boolean isAscii(String idCode) {
+    if (idCode == null || idCode.isEmpty()) {
+      return false;
+    }
+    for (int i = 0; i < idCode.length(); i++) {
+      if (idCode.charAt(i) > 127) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private static int writeIdCodes(
       JSArrayReader<JSString> idCodes,
       JSArray<JSString> result,
@@ -554,18 +847,38 @@ public final class Search {
   }
 
   private static StereoMolecule parseFragment(String idCodeQuery) {
+    StereoMolecule[] fragments = parseFragments(idCodeQuery);
+    if (fragments.length != 1) {
+      throw new IllegalArgumentException("one query idcode is expected, not several");
+    }
+    return fragments[0];
+  }
+
+  /**
+   * Parses a query: one idcode, or several joined by {@code '\n'}, each as a fragment.
+   *
+   * @param idCodeQuery the query
+   * @return its fragments, in order; never empty
+   * @throws IllegalArgumentException if one of the idcodes cannot be parsed
+   */
+  private static StereoMolecule[] parseFragments(String idCodeQuery) {
     if (idCodeQuery != null && idCodeQuery.equals(cachedFragmentQuery)) {
-      return cachedFragment;
+      return cachedFragments;
     }
+    String[] parts = idCodeQuery == null ? new String[] {null} : idCodeQuery.split("\n", -1);
     IDCodeParserWithoutCoordinateInvention parser = new IDCodeParserWithoutCoordinateInvention();
-    StereoMolecule fragment = new StereoMolecule();
-    if (!parse(parser, fragment, idCodeQuery)) {
-      throw new IllegalArgumentException("cannot parse the query idcode");
+    StereoMolecule[] fragments = new StereoMolecule[parts.length];
+    for (int i = 0; i < parts.length; i++) {
+      StereoMolecule fragment = new StereoMolecule();
+      if (!parse(parser, fragment, parts[i])) {
+        throw new IllegalArgumentException("cannot parse the query idcode");
+      }
+      fragment.setFragment(true);
+      fragments[i] = fragment;
     }
-    fragment.setFragment(true);
-    cachedFragment = fragment;
+    cachedFragments = fragments;
     cachedFragmentQuery = idCodeQuery;
-    return fragment;
+    return fragments;
   }
 
   private static long[] queryIndex(SSSearcherWithIndex indexer, String idCodeQuery) {
@@ -607,8 +920,27 @@ public final class Search {
     return molecule.getAllAtoms() != 0;
   }
 
-  private static byte match(SSSearcher searcher, StereoMolecule molecule) {
+  /**
+   * Tests the fragments on one molecule, in order, until one matches.
+   *
+   * @param searcher holds the first fragment when the scan starts; with several, it is left holding
+   *     whichever fragment was tried last, and the next molecule starts over from the first
+   * @param molecule the parsed molecule
+   * @param fragments the query's fragments
+   * @return {@link #MATCH} or {@link #NO_MATCH}
+   */
+  private static byte match(
+      SSSearcher searcher, StereoMolecule molecule, StereoMolecule[] fragments) {
     searcher.setMolecule(molecule);
-    return searcher.isFragmentInMolecule() ? MATCH : NO_MATCH;
+    if (fragments.length == 1) {
+      return searcher.isFragmentInMolecule() ? MATCH : NO_MATCH;
+    }
+    for (StereoMolecule fragment : fragments) {
+      searcher.setFragment(fragment);
+      if (searcher.isFragmentInMolecule()) {
+        return MATCH;
+      }
+    }
+    return NO_MATCH;
   }
 }

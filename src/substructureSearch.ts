@@ -7,7 +7,8 @@ import type {
 import { SubstructureResult } from './types.ts';
 
 /**
- * Tests a query fragment against many molecules and returns the ones that contain it.
+ * Tests a query fragment, or any of several, against many molecules and returns the ones that
+ * contain it.
  *
  * The entries are either idcodes or objects carrying one — a database row, a candidate a prescreen
  * yielded — and what comes back is those same objects, so nothing has to map positions back onto
@@ -17,20 +18,22 @@ import { SubstructureResult } from './types.ts';
  * The scan is synchronous. `onStep` reports it and can stop it, but the thread is not yielded:
  * a caller that needs a responsive main thread slices the array across calls, or runs this in a
  * worker.
- * @param idCodeQuery - The query, as an idcode. It is searched as a fragment whatever its own
+ * @param idCodeQuery - The query, as an idcode, or several: a molecule then matches when it holds
+ * any of them, which is how a function key of `openchemlib-search-wasm/function-keys` is searched
+ * (`substructureSearch(key.fragments, entries)`). Each is searched as a fragment whatever its own
  * fragment flag says, which is what `openchemlib`'s `SSSearcher` does with `setFragment(true)`.
  * @param entries - The molecules to test: idcodes, or objects holding one at `options.jpath`.
  * @param options - Where the idcode sits, how many matches are enough, and how to report progress.
  * @returns The matching entries, their positions, the status buffer and the counts.
- * @throws {Error} If the query cannot be parsed, if more than 100 idcodes cannot be, or if no entry
- * holds a string at the jpath.
+ * @throws {Error} If the query cannot be parsed or is an empty list, if more than 100 idcodes cannot
+ * be, or if no entry holds a string at the jpath.
  * @example
  * ```js
  * const { matches } = substructureSearch('gFp@DiTt@@B', rows, { jpath: 'molecule.idCode' });
  * ```
  */
 export function substructureSearch<Entry>(
-  idCodeQuery: string,
+  idCodeQuery: string | readonly string[],
   entries: readonly Entry[],
   options: SubstructureSearchOptions = {},
 ): SubstructureSearchResult<Entry> {
@@ -67,7 +70,7 @@ export function substructureSearch<Entry>(
 
   const run = runSearch({
     mode: 'substructure',
-    idCodeQuery,
+    idCodeQuery: joinQueries(idCodeQuery),
     idCodes,
     result,
     tally,
@@ -94,4 +97,24 @@ export function substructureSearch<Entry>(
     elapsed: run.elapsed,
     stopped: run.stopped,
   };
+}
+
+/**
+ * The query as the WebAssembly side reads it: one idcode, or several joined by `'\n'`, which no
+ * idcode contains.
+ * @param idCodeQuery - The query, as an idcode or several.
+ * @returns The query string.
+ * @throws {Error} If the list is empty or an entry holds a line break.
+ */
+function joinQueries(idCodeQuery: string | readonly string[]): string {
+  if (typeof idCodeQuery === 'string') return idCodeQuery;
+  if (idCodeQuery.length === 0) {
+    throw new Error('the query list is empty: give at least one idcode');
+  }
+  for (const idCode of idCodeQuery) {
+    if (idCode.includes('\n')) {
+      throw new Error(`"${idCode}" is not a valid query idcode`);
+    }
+  }
+  return idCodeQuery.join('\n');
 }

@@ -5,9 +5,10 @@ TeaVM. Almost everything below is about keeping that closure cheap to upgrade.
 
 ```
 java/pom.xml                          TeaVM WasmGC build; javac pulls OpenChemLib from the submodule
-java/overlay/                         escape hatch, deliberately empty
-java/src/main/java/org/openchemlib/wasm/{Entry,Search,Screen,ScreenKeys}.java   the only Java we own
+java/overlay/                         escape hatch: one patched OpenChemLib class
+java/src/main/java/org/openchemlib/wasm/{Canonical,Entry,Functions,FunctionKeys,Search,Screen,ScreenKeys}.java   the only Java we own
 openchemlib/                          git submodule, upstream OpenChemLib source
+scripts/build-function-keys.mjs       writes FunctionKeys.java from src/functionKeys/dictionary.json
 scripts/build-wasm.mjs                finds a JDK, runs Maven, then binaryen
 scripts/check-wasm.mjs                compares the committed module with the one the sources produce
 build/embed-wasm.mjs                  gzip+base64 the wasm into wasm/, copy the TeaVM runtime
@@ -64,11 +65,13 @@ npm run build
 npm run test-only
 ```
 
-Commit the submodule pointer and the regenerated `wasm/`. That is the entire procedure.
+Then compare each file of `java/overlay/` with its upstream version: carry the new upstream code
+into the copy, or delete the copy once upstream ships the fix. Commit the submodule pointer and the
+regenerated `wasm/`. That is the entire procedure.
 
-It is that short because **OpenChemLib is neither vendored nor patched**. `java/pom.xml` compiles
-only `org/openchemlib/wasm/*.java`; javac's `-sourcepath` pulls the reachable closure — 47
-OpenChemLib classes, 62 class files with the nested ones — straight out of the submodule working
+It is that short because **OpenChemLib is not vendored, and only one class is patched**. `java/pom.xml` compiles
+only `org/openchemlib/wasm/*.java`; javac's `-sourcepath` pulls the reachable closure — 50
+OpenChemLib classes, 65 class files with the nested ones — straight out of the submodule working
 tree, and TeaVM's dead-code elimination compiles that same
 closure. There is no copy to regenerate and no diff to review.
 
@@ -85,7 +88,7 @@ Two things a bump can break, and how each surfaces:
 - a fingerprint definition, an aromaticity rule or a match rule changes — the tests fail. Nothing
   else catches that, which is why the tests are shaped the way they are.
 
-### `java/overlay/` stays empty
+### `java/overlay/` holds one patched class
 
 The pom puts it ahead of the submodule on the sourcepath:
 
@@ -98,9 +101,10 @@ file dropped in `java/overlay/` under its real package path replaces the upstrea
 with no fork and no patch.
 
 Empty is the goal: an empty overlay is what makes an OpenChemLib upgrade a submodule bump. Every file
-added here has to be reconciled against upstream at every release from then on. Add one only when an
-upstream source genuinely cannot be compiled by TeaVM, say why at the top of the file, and open an
-issue upstream.
+added here has to be reconciled against upstream at every release from then on, says why at its top,
+and goes once upstream ships the fix. Today it holds `SSSearcher.java`, whose ring features ignored
+that a ring may be closed by exclude-group atoms, so that `[C;!$(C1CCCC1)]` matched nothing; see
+`java/overlay/README.md`, and `excludeGroupRing.test.ts` for the behaviour it guarantees.
 
 ## The screen dictionary
 
@@ -115,6 +119,36 @@ bond gives no bits (Actelion/openchemlib#177), and a key's atom ring sizes are t
 `Screen.java` because `SSSearcher` skips them when the molecule is a fragment (#178). This is our
 own Java, not an overlay. Once OpenChemLib fixes both, the workarounds can go: only query bits can
 change, never a stored molecule's.
+
+## The function keys
+
+`src/functionKeys/dictionary.json` is the dictionary of `openchemlib-search-wasm/function-keys`:
+every key with its names, category, tier, prevalence, SMARTS and fragments. It is exported by the
+selection pipeline (Python and RDKit, which compiles the SMARTS, checks them against RDKit and picks
+the stored keys), not written by hand. `npm run build-function-keys` writes the stored keys, in
+plane order, into `FunctionKeys.java`; rebuild the module after it.
+
+`Functions.java` sets bit i when any fragment of stored key i matches, in `SSSearcher`'s default
+mode, trying a fragment only on a molecule that holds its query FragFp and screen. Changing, adding
+or reordering a stored key changes every stored record, so the 512 only change in a major release.
+`functionKeys.test.ts` checks the module holds exactly the dictionary's stored keys, and
+`functions.test.ts` that every stored bit, and every key equal to an existing plane, is what a
+substructure search for its fragments answers.
+
+## The canonical idcode
+
+`getMoleculeRecords` returns the idcode `openchemlib-js` gives for
+`Molecule.fromIDCode(idCode).getIDCode()`, from the coordinate-free molecule every other export
+parses. The Canonizer reads stereo parities off coordinates, so `Canonical.java` replays, on a copy,
+what `IDCodeParserWithoutCoordinateInvention.parse` does once `ensure2DCoordinates()` holds, with
+the inventor `IDCodeParser.inventCoordinates` uses. That is upstream logic restated, so an
+OpenChemLib bump that changes either method must be followed there. `moleculeRecords.test.ts` and
+`canonicalIdCode.test.ts` are what notice: they compare every fixture idcode, 300 tautomer keys a
+round trip changes and 14 stereo cases with `openchemlib-js`.
+
+TeaVM's `Random.nextInt(bound)` is not the JDK's algorithm, so a molecule whose atoms collide while
+coordinates are invented may get other coordinates than in `openchemlib-js`. The idcode depends on
+them only through the parities read back, and every test molecule agrees.
 
 ## What the tests guarantee
 

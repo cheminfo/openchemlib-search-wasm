@@ -21,7 +21,8 @@ maintainer job**: the `openchemlib` git submodule and the JDK it needs live in
 ## Use
 
 ```ts
-substructureSearch<Entry>(idCodeQuery: string, entries: Entry[],
+// idCodeQuery: one idcode, or several — a molecule then matches when it holds any of them
+substructureSearch<Entry>(idCodeQuery: string | string[], entries: Entry[],
                           options?: SubstructureSearchOptions): SubstructureSearchResult<Entry>;
 similaritySearch<Entry>(idCodeQuery: string, entries: Entry[],
                         options?: SimilaritySearchOptions): SimilaritySearchResult<Entry>;
@@ -38,7 +39,17 @@ getScreens(idCodes: string[]): Int32Array[];
 getQueryIndex(idCodeQuery: string): Int32Array;
 getQueryScreen(idCodeQuery: string): Int32Array;
 
-// the 64-bit hash a molecule keeps across its stereoisomers
+// the 512 key fragments behind the bits of each, in bit order
+getFragFpKeys(): string[];
+getScreenKeys(): string[];
+
+// FUNCTIONS ARE NOT YET WELL DEFINED AND MAY / WILL CHANGE ANYTIME WITHOUT BREAKING CHANGE !
+// 512 named function bits — thioether, aromatic ring, uracil, Boc — and their fragments
+getFunction(idCode: string): Int32Array;
+getFunctions(idCodes: string[]): Int32Array[];
+getFunctionKeyFragments(): string[][];
+
+
 getNoStereoHash(idCode: string, options?: HashOptions): bigint;
 getNoStereoHashes(idCodes: string[], options?: HashOptions): BigInt64Array;
 
@@ -51,6 +62,13 @@ getNoStereoIdCode(idCode: string, options?: HashOptions): string;
 getNoStereoIdCodes(idCodes: string[], options?: HashOptions): string[];
 getNoStereoTautomerIdCode(idCode: string, options?: HashOptions): string;
 getNoStereoTautomerIdCodes(idCodes: string[], options?: HashOptions): string[];
+
+// everything a molecule table stores, from one parse per molecule
+getMoleculeRecords(idCodes: string[], options?: MoleculeRecordsOptions): MoleculeRecords;
+// only the atom count and the relative weight of each molecule
+getMoleculeSizes(idCodes: string[]): MoleculeSizes;
+// the fewest atoms a molecule needs to contain the query
+getQueryAtomFloor(idCodeQuery: string): number;
 
 // a hash as the 16 hex digits that cross an API, and back
 hashToHex(hash: bigint): string;
@@ -205,6 +223,56 @@ exclude group cutting an aromatic ring or with a "match formal bond order" bond
 ring sizes when it matches a key in a query
 ([#178](https://github.com/Actelion/openchemlib/issues/178)). For any other query, `getQueryIndex`
 equals OpenChemLib's own.
+
+`getFragFpKeys` and `getScreenKeys` return the two dictionaries as idcodes, in bit order, so a page
+can draw what each bit stands for. Bit i is key i, in word `i >> 5` at `1 << (31 - (i & 31))`:
+
+```js
+const screen = getScreen(idCode);
+const held = getScreenKeys().filter(
+  (key, i) => screen[i >> 5] & (1 << (31 - (i & 31))),
+);
+```
+
+## Function keys
+
+`getFunction` adds 512 named bits: bit i is set when the molecule holds function key i — a
+thioether, an aromatic ring, a uracil, a Boc group. A question in words becomes bit arithmetic over
+stored words, and each bit is exactly what `substructureSearch(key.fragments, entries)` answers.
+
+The dictionary sits in a subpath, so a page that only searches never loads its 3 MB:
+
+```js
+import {
+  getFunctionKey,
+  getRecordBit,
+  searchFunctionKeys,
+} from 'openchemlib-search-wasm/function-keys';
+
+searchFunctionKeys('lactam'); // keys whose names hold "lactam", an exact name first
+const key = getFunctionKey('thioether'); // by id, name or synonym, case aside
+const { word, mask } = getRecordBit(key);
+const holds = (records.words[48 * i + word] & mask) !== 0; // records of getMoleculeRecords
+```
+
+It holds 3,611 keys in 19 categories (`getFunctionCategories`), each with a unique name and its
+synonyms:
+
+| tier            |  keys | answered by                                                               |
+| --------------- | ----: | ------------------------------------------------------------------------- |
+| `stored`        |   512 | bit `key.plane` of `getFunction`, words 32 to 47 of a record              |
+| `existingPlane` |    22 | bit `key.bit` of the FragFp or the screen, which holds the same molecules |
+| `onDemand`      | 3,077 | `substructureSearch(key.fragments, entries)`                              |
+
+`getRecordBit` is undefined for an on-demand key. `key.prevalence` is the share of 1,034,054 PubChem
+molecules holding the key, which orders the tests of a query from the most selective. The stored
+keys are frozen with the module: changing, adding or reordering one changes every stored record,
+so the 512 only change in a major release.
+
+The definitions are ours and those of ChemCaption, AccFG, medchem, RDKit and openchemlib-utils,
+with their licences in `getFunctionKeySources`. Every SMARTS was compiled to OpenChemLib query
+fragments and checked against RDKit on 100,000 molecules; where the two aromaticity models disagree,
+as on pyridones and coumarins, the key follows OpenChemLib's.
 
 ## Identity hashes
 
@@ -369,6 +437,36 @@ string, which also keeps a 64-bit value from ever being read into a JavaScript n
 SELECT printf('%016x', no_stereo_tautomer_hash) AS hash FROM molecules WHERE id = ?;
 ```
 
+## Molecule records
+
+`getMoleculeRecords` computes what a molecule table stores, parsing each idcode once:
+
+| field            | per molecule                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| `idCodes`        | the canonical idcode, as `openchemlib`'s `Molecule.fromIDCode(idCode).getIDCode()` |
+| `words`          | 48 words at `48 * i`: the FragFp, the screen, then the function bits               |
+| `atomCounts`     | `getAllAtoms()`, explicit hydrogens included                                       |
+| `weights`        | OpenChemLib's relative weight                                                      |
+| `noStereoHashes` | the hash of `getNoStereoHashes`                                                    |
+| `tautomerHashes` | the hash of `getNoStereoTautomerHashes`, unless that one is not canonical          |
+| `tautomerCounts` | how many tautomers were enumerated                                                 |
+
+A molecule whose enumeration reaches `maxTautomers` (default `DEFAULT_MAX_TAUTOMERS`) gets its
+no-stereo hash as its tautomer hash, because a key from a cut-short enumeration depends on where it
+stopped. An idcode that will not parse gets `''`, zeros, 0 atoms, `NaN`, `NO_HASH` and a count of 0.
+
+The canonical idcode keeps stereochemistry, so it is canonized on invented 2D coordinates, as
+`openchemlib` parses by default. Canonizing the coordinate-free molecule instead gives another
+idcode for 330 of the 1,999 test idcodes.
+
+One call costs about what `getIndexes`, `getScreens`, `getFunctions` and the two hash functions cost together: the
+parses it saves roughly pay for the atom count and the weight, and the canonical idcode adds a
+coordinate invention per molecule. `node benchmark/records.js` measures it.
+
+`getMoleculeSizes` returns only `atomCounts` and `weights`, for one parse each. `getQueryAtomFloor`
+is the atom count below which a molecule cannot contain a query: its atoms once exclude groups are
+removed, plain hydrogens aside.
+
 ## Diagnostics
 
 **Nothing here writes to your console.** The generated TeaVM runtime maps Java's standard output
@@ -421,4 +519,8 @@ anything is parsed, which is worth far more than 2x. Search the survivors, not t
 
 ## License
 
-BSD-3-Clause.
+BSD-3-Clause. The function-key dictionary adapts definitions from
+[ChemCaption](https://github.com/lamalab-org/chem-caption) (MIT),
+[AccFG](https://github.com/xuanliugit/AccFG) (MIT), [medchem](https://github.com/datamol-io/medchem)
+(Apache-2.0), [RDKit](https://github.com/rdkit/rdkit) (BSD-3-Clause) and
+[openchemlib-utils](https://github.com/cheminfo/openchemlib-utils) (MIT).

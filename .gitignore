@@ -4,6 +4,7 @@
 /coverage
 dev/dist
 dev/public/idcodes.*
+dev/public/function-keys.json
 java/target
 /lib
 node_modules

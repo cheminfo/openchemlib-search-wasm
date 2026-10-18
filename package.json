@@ -28,6 +28,7 @@
     "benchmark-scan": "node benchmark/scan.mjs",
     "build": "npm run build-wasm && npm run build-embed",
     "build-embed": "node build/embed-wasm.mjs",
+    "build-function-keys": "node scripts/build-function-keys.mjs",
     "build-wasm": "node scripts/build-wasm.mjs",
     "check-types": "tsc --noEmit",
     "check-wasm": "node scripts/check-wasm.mjs",
@@ -45,10 +46,12 @@
     "tsc-build": "tsc --project tsconfig.build.json"
   },
   "exports": {
-    ".": "./lib/index.js"
+    ".": "./lib/index.js",
+    "./function-keys": "./lib/functionKeys/index.js"
   },
   "imports": {
-    "#lib": "./src/index.ts"
+    "#lib": "./src/index.ts",
+    "#function-keys": "./src/functionKeys/index.ts"
   },
   "files": [
     "lib",

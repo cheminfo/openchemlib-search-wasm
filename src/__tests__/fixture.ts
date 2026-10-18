@@ -84,6 +84,16 @@ export function referenceSimilarity(
 }
 
 /**
+ * The canonical idcode openchemlib-js gives: the default parse, which invents 2D coordinates, then
+ * `getIDCode`. This is the reference `getMoleculeRecords` must reproduce.
+ * @param idCode - The molecule.
+ * @returns Its canonical idcode.
+ */
+export function referenceIdCode(idCode: string): string {
+  return OCL.Molecule.fromIDCode(idCode).getIDCode();
+}
+
+/**
  * Counts the entries holding a given result code.
  * @param result - A result buffer.
  * @param code - The code to count.

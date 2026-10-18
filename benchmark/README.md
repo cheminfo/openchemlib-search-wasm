@@ -1,8 +1,8 @@
 # Benchmarks
 
-Eight files. Seven are [benchmark.js](https://benchmarkjs.com) suites that A/B in one process on
-the same idcodes — four against `openchemlib` 9.25.0, one against the call shape this package
-replaced, two over this package alone; the eighth is a whole-corpus measurement across worker
+Nine files. Eight are [benchmark.js](https://benchmarkjs.com) suites that A/B in one process on
+the same idcodes — four against `openchemlib` 9.25.0, two against the call shapes this package
+replaced, two over this package alone; the ninth is a whole-corpus measurement across worker
 threads, which benchmark.js is the wrong tool for. `wasmOpt.js` is a maintainer tool rather than a benchmark of the
 package, and is documented in [CONTRIBUTING.md](../CONTRIBUTING.md).
 
@@ -14,6 +14,7 @@ node benchmark/boundary.js           # what crossing into WASM costs, with no ch
 node benchmark/entries.js            # entries in and out vs the parallel-array shape it replaced
 node benchmark/limit.js              # what `limit` saves, and what `stepSize` does to it
 node benchmark/hash.js               # what the two identity hashes cost, and how unevenly
+node benchmark/records.js            # one getMoleculeRecords call against the four it replaces
 node benchmark/scan.mjs              # the whole corpus across 1, 2, 4, 8 workers, both engines
 ```
 

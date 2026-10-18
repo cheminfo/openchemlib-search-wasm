@@ -1,0 +1,230 @@
+main.wide {
+  max-width: 96rem;
+}
+
+.nav {
+  display: flex;
+  margin: 0 0 0.6rem;
+  gap: 0.9rem;
+}
+
+.nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.nav a:hover {
+  color: var(--ink);
+}
+
+.nav a.active {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.functions {
+  display: grid;
+  align-items: start;
+  gap: 1rem;
+  grid-template-columns: 15rem minmax(0, 1fr);
+}
+
+.categories {
+  position: sticky;
+  top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.categories button {
+  display: flex;
+  justify-content: space-between;
+  border: 0;
+  background: none;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.categories button.active {
+  background: var(--wash);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.category h2 {
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid var(--line);
+  margin: 1rem 0 0.2rem;
+  font-size: 0.98rem;
+}
+
+.category h3 {
+  margin: 0.6rem 0 0.15rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+button.key {
+  display: grid;
+  width: 100%;
+  align-items: center;
+  padding: 0.25rem 0.4rem;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  column-gap: 0.8rem;
+  font-size: 0.84rem;
+  grid-template-columns: 136px 6.5rem minmax(0, 1fr) 4.5rem 4.5rem 8.5rem;
+  text-align: left;
+}
+
+.thumbnail {
+  position: relative;
+  display: inline-flex;
+  width: 136px;
+  height: 88px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.thumbnail .more {
+  position: absolute;
+  right: 3px;
+  bottom: 1px;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+button.key:hover {
+  background: var(--wash);
+}
+
+button.key.open {
+  background: var(--wash);
+}
+
+button.key .plane,
+button.key .cost {
+  overflow: hidden;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.key .plane {
+  color: var(--muted);
+}
+
+button.key .name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+button.key .meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  gap: 0.25rem 0.4rem;
+}
+
+button.key .count,
+button.key .cost {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+button.key .verdict {
+  color: var(--good);
+  font-size: 0.78rem;
+}
+
+button.key .verdict.warn {
+  color: #b45309;
+}
+
+.flag {
+  padding: 0 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.details {
+  padding: 0.5rem 0.6rem 0.8rem;
+  border-left: 2px solid var(--accent);
+  margin: 0.1rem 0 0.6rem 0.4rem;
+}
+
+.facts {
+  display: grid;
+  margin: 0.2rem 0 0.5rem;
+  gap: 0.15rem 0.8rem;
+  grid-template-columns: 9rem minmax(0, 1fr);
+}
+
+pre.smarts {
+  padding: 0.3rem 0.45rem;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  margin: 0.3rem 0;
+  background: var(--wash);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+button.link {
+  padding: 0;
+  border: 0;
+  margin-right: 0.7rem;
+  background: none;
+  color: var(--accent);
+  text-align: left;
+}
+
+button.link:hover:not(:disabled) {
+  background: none;
+  text-decoration: underline;
+}
+
+.drawings {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0.3rem 0 0.6rem;
+  gap: 0.4rem;
+}
+
+.drawing {
+  display: flex;
+  max-width: 11rem;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.2rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  margin: 0;
+}
+
+.drawing figcaption {
+  max-width: 10.5rem;
+  overflow: hidden;
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drawing.fragment {
+  background: var(--wash);
+}
+
+.absorbed {
+  display: block;
+}

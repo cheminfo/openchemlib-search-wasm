@@ -167,7 +167,10 @@ export interface SimilaritySearchResult<Entry> extends SearchResult<Entry> {
 /** The shape TeaVM exports from the WasmGC module. Both take a half-open `[from, to)` range. */
 export interface OCLSearch {
   Search: {
-    /** Returns how many molecules in the range contain the fragment. */
+    /**
+     * Returns how many molecules in the range contain the fragment, or any of the fragments when
+     * the query holds several idcodes joined by `'\n'`.
+     */
     ssSearch: (
       idCodeQuery: string,
       idCodes: string[],
@@ -201,6 +204,22 @@ export interface OCLSearch {
     getQueryScreen: (idCodeQuery: string, result: Int32Array) => void;
     /** Writes the query's sixteen FragFp words into `result`. */
     getQueryIndex: (idCodeQuery: string, result: Int32Array) => void;
+    /** Returns FragFp's 512 key idcodes, in bit order, joined by `'\n'`. */
+    getFragFpKeys: () => string;
+    /** Returns the screen's 512 key idcodes, in bit order, joined by `'\n'`. */
+    getScreenKeys: () => string;
+    /** Returns how many molecules in the range were parsed and read. */
+    getFunctions: (
+      idCodes: string[],
+      result: Int32Array,
+      from: number,
+      to: number,
+    ) => number;
+    /**
+     * Returns the 512 stored function keys, in bit order, joined by `'\n'`: each key's fragment
+     * idcodes joined by a space.
+     */
+    getFunctionKeys: () => string;
     /** Returns how many molecules in the range were hashed. */
     getNoStereoTautomerHashes: (
       idCodes: string[],
@@ -237,11 +256,41 @@ export interface OCLSearch {
       from: number,
       to: number,
     ) => number;
+    /** Returns how many molecules in the range were read. */
+    getMoleculeRecords: (
+      idCodes: string[],
+      canonical: string[],
+      words: Int32Array,
+      atomCounts: Int32Array,
+      weights: Float64Array,
+      noStereoHashes: BigInt64Array,
+      tautomerHashes: BigInt64Array,
+      tautomerCounts: Int32Array,
+      maxTautomers: number,
+      from: number,
+      to: number,
+    ) => number;
+    /** Returns how many molecules in the range were read. */
+    getMoleculeSizes: (
+      idCodes: string[],
+      atomCounts: Int32Array,
+      weights: Float64Array,
+      from: number,
+      to: number,
+    ) => number;
+    /** Returns the query's atom floor. */
+    getQueryAtomFloor: (idCodeQuery: string) => number;
   };
 }
 
-/** How many 32-bit words one molecule's FragFp fingerprint, or its screen, occupies. */
+/** How many 32-bit words one molecule's FragFp fingerprint, its screen, or its function bits occupy. */
 export const INDEX_WORDS = 16;
+
+/**
+ * How many 32-bit words one molecule's record holds in `getMoleculeRecords`: its FragFp, its screen,
+ * then its function bits, {@link INDEX_WORDS} each.
+ */
+export const RECORD_WORDS = 3 * INDEX_WORDS;
 
 /** What every hash function takes. */
 export interface HashOptions {
@@ -279,6 +328,59 @@ export interface HashOptions {
 
 /** {@link HashOptions} under the name the tautomer hashes introduced it with. */
 export type TautomerHashOptions = HashOptions;
+
+/** What `getMoleculeRecords` takes. */
+export interface MoleculeRecordsOptions {
+  /**
+   * The ceiling on the tautomer enumeration. A molecule that reaches it takes its no-stereo hash as
+   * its tautomer hash, because a key from a truncated enumeration is not canonical.
+   * @default DEFAULT_MAX_TAUTOMERS
+   */
+  maxTautomers?: number;
+}
+
+/**
+ * Everything a molecule table stores about each molecule, one entry per input idcode, in input
+ * order. A molecule whose idcode cannot be read gets `NO_ID_CODE`, 48 zero words, 0 atoms, a `NaN`
+ * weight, `NO_HASH` twice and a tautomer count of 0.
+ */
+export interface MoleculeRecords {
+  /**
+   * The canonical idcode, stereochemistry included: what `openchemlib-js` gives for
+   * `Molecule.fromIDCode(idCode).getIDCode()`.
+   */
+  idCodes: string[];
+  /**
+   * {@link RECORD_WORDS} words per molecule, at `48 * i`: the FragFp (the 16 words of `getIndexes`),
+   * the screen (the 16 words of `getScreens`), then the function bits (the 16 words of
+   * `getFunctions`).
+   */
+  words: Int32Array;
+  /** `getAllAtoms()` of the molecule parsed without coordinates, explicit hydrogens included. */
+  atomCounts: Int32Array;
+  /** OpenChemLib's relative molecular weight. */
+  weights: Float64Array;
+  /** The value of `getNoStereoHashes`. */
+  noStereoHashes: BigInt64Array;
+  /**
+   * The value of `getNoStereoTautomerHashes`, except for a molecule whose enumeration reached
+   * `maxTautomers` or could not be canonized: that one gets its no-stereo hash.
+   */
+  tautomerHashes: BigInt64Array;
+  /** How many tautomers were enumerated; at or above `maxTautomers` the enumeration was cut short. */
+  tautomerCounts: Int32Array;
+}
+
+/** The size of each molecule, one entry per input idcode, in input order. */
+export interface MoleculeSizes {
+  /**
+   * `getAllAtoms()` of the molecule parsed without coordinates, explicit hydrogens included; 0 when
+   * the idcode cannot be read.
+   */
+  atomCounts: Int32Array;
+  /** OpenChemLib's relative molecular weight; `NaN` when the idcode cannot be read. */
+  weights: Float64Array;
+}
 
 /**
  * The hash of a molecule that has none: its idcode could not be parsed, or OpenChemLib could not
