@@ -1,3 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { Worker } from 'node:worker_threads';
+
 import { expect, test } from 'vitest';
 
 import {
@@ -93,6 +98,44 @@ test('the hash follows the same ceiling as the idcode', () => {
     getNoStereoTautomerHash(idCode),
   );
 }, 30_000);
+
+test('an enumeration that reaches the ceiling stops exactly at it', () => {
+  const tautomerCounts = new Int32Array(1);
+
+  getNoStereoTautomerIdCode(talkative(), { maxTautomers: 500, tautomerCounts });
+
+  expect(tautomerCounts[0]).toBe(500);
+});
+
+// C216H154N16O8, a 240-atom conjugated system from PubChem: one expansion step adds far more
+// variants than the ceiling, which filled a 4.4 GB worker heap before the overlay bounded the set.
+test('the ceiling bounds the memory of a large conjugated system', async () => {
+  const idCode = readFileSync(
+    join(import.meta.dirname, 'data/conjugated-240-atoms.idcode'),
+    'utf8',
+  ).trim();
+  const index = pathToFileURL(join(import.meta.dirname, '../index.ts')).href;
+  const worker = new Worker(
+    `const { parentPort, workerData } = require('node:worker_threads');
+    import(${JSON.stringify(index)}).then(({ getMoleculeRecords }) => {
+      const records = getMoleculeRecords([workerData], { maxTautomers: 5000 });
+      parentPort.postMessage(records.tautomerCounts[0]);
+    });`,
+    {
+      eval: true,
+      workerData: idCode,
+      resourceLimits: { maxOldGenerationSizeMb: 1024 },
+    },
+  );
+
+  const count = await new Promise((resolve, reject) => {
+    worker.once('message', resolve);
+    worker.once('error', reject);
+  });
+  await worker.terminate();
+
+  expect(count).toBe(5000);
+}, 120_000);
 
 test('the default ceiling is OpenChemLib own', () => {
   expect(DEFAULT_MAX_TAUTOMERS).toBe(100_000);

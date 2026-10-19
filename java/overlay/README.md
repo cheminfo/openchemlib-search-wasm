@@ -29,3 +29,16 @@ copy.
 **Remove it** when OpenChemLib's own `SSSearcher` finds `[C;!$(C1CCCC1)]` in butane:
 `excludeGroupRing.test.ts` then passes without the overlay. To reconcile after a submodule bump
 before that, copy the new upstream file here and re-apply the block.
+
+### `com/actelion/research/chem/TautomerHelper.java`
+
+The ceiling set with `setMaxTautomers()` was checked only after a whole expansion step, and one step
+on a large conjugated system adds far more bond-order variants than the ceiling: a 240-atom
+C216H154N16O8 from PubChem filled a 4.4 GB worker heap with the ceiling at 5,000, which stopped a
+whole-PubChem import. Two lines at the top of `addTautomerIfNew(BondOrders)` refuse a variant once
+the set holds the ceiling, so an enumeration that reaches it stops exactly there; one that does not
+enumerates exactly as before.
+
+**Remove it** when OpenChemLib's own `TautomerHelper` stops at the ceiling:
+`maxTautomers.test.ts` then passes without the overlay. To reconcile after a submodule bump before
+that, copy the new upstream file here and re-apply the two lines.
