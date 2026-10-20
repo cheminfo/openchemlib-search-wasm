@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/cheminfo/openchemlib-search-wasm/compare/v2.1.0...v2.1.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* stop the tautomer enumeration at its ceiling ([07c4a2e](https://github.com/cheminfo/openchemlib-search-wasm/commit/07c4a2eb2aae18fb77aa41f75eb35565c63e99b3))
+
 ## [2.1.0](https://github.com/cheminfo/openchemlib-search-wasm/compare/v2.0.0...v2.1.0) (2026-10-18)
 
 
