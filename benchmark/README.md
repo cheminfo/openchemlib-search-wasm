@@ -1,8 +1,8 @@
 # Benchmarks
 
-Nine files. Eight are [benchmark.js](https://benchmarkjs.com) suites that A/B in one process on
+Ten files. Nine are [benchmark.js](https://benchmarkjs.com) suites that A/B in one process on
 the same idcodes — four against `openchemlib` 9.25.0, two against the call shapes this package
-replaced, two over this package alone; the ninth is a whole-corpus measurement across worker
+replaced, two over this package alone, one against a previous release; the tenth is a whole-corpus measurement across worker
 threads, which benchmark.js is the wrong tool for. `wasmOpt.js` is a maintainer tool rather than a benchmark of the
 package, and is documented in [CONTRIBUTING.md](../CONTRIBUTING.md).
 
@@ -15,6 +15,7 @@ node benchmark/entries.js            # entries in and out vs the parallel-array 
 node benchmark/limit.js              # what `limit` saves, and what `stepSize` does to it
 node benchmark/hash.js               # what the two identity hashes cost, and how unevenly
 node benchmark/records.js            # one getMoleculeRecords call against the four it replaces
+node benchmark/coldStart.js          # what a fresh module pays before its first function words
 node benchmark/scan.mjs              # the whole corpus across 1, 2, 4, 8 workers, both engines
 ```
 
@@ -51,6 +52,11 @@ is marked with a `!` and must not be used.
 | `entries.js`            | What does taking and returning entries cost against parallel arrays?       | 20,000         | ~4 min  |
 | `limit.js`              | What does a bounded scan really read, and what does it cost?               | 409,686        | ~10 s   |
 | `scan.mjs`              | What does the whole corpus cost, on N cores, for real?                     | 409,686        | ~1 min  |
+| `coldStart.js`          | What does a new worker pay before its first function words?                | 1              | ~3 min  |
+
+`coldStart.js` compares the working tree's module with a release read from git (`--baseline`,
+`v2.1.1` by default; `--candidate` picks a ref instead of the working tree). Each sample compiles
+and instantiates a new module, because that one-off cost is what it measures.
 
 Every A/B asserts the two engines agree before it times anything: `substructureSearch.js` and `scan.mjs`
 compare hit counts per query, `similaritySearch.js` compares every coefficient, `parse.js` checks
