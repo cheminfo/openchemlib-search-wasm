@@ -1,5 +1,9 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { expect, test } from 'vitest';
 
+import { functionKeysSource } from '../../scripts/functionKeysSource.ts';
 import type { FunctionKey } from '../functionKeys/index.ts';
 import {
   getFunctionCategories,
@@ -39,6 +43,15 @@ test('the module computes exactly the stored keys of the dictionary', () => {
   expect(getFunctionKeyFragments()).toStrictEqual(
     keys.slice(0, 512).map((key) => key.fragments),
   );
+});
+
+test('FunctionKeys.java holds the stored keys and the query bits the module gives them', () => {
+  const file = join(
+    import.meta.dirname,
+    '../../java/src/main/java/org/openchemlib/wasm/FunctionKeys.java',
+  );
+
+  expect(functionKeysSource()).toBe(readFileSync(file, 'utf8'));
 });
 
 test('every id and every name belongs to one key, and every key has fragments', () => {

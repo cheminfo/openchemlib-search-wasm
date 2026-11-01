@@ -5,5 +5,5 @@
     "noUncheckedIndexedAccess": true,
     "types": ["node"]
   },
-  "include": ["src", "dev", "benchmark", "build", "vitest.config.ts"]
+  "include": ["src", "dev", "benchmark", "build", "scripts", "vitest.config.ts"]
 }

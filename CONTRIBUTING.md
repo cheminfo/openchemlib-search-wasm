@@ -8,7 +8,7 @@ java/pom.xml                          TeaVM WasmGC build; javac pulls OpenChemLi
 java/overlay/                         escape hatch: one patched OpenChemLib class
 java/src/main/java/org/openchemlib/wasm/{Canonical,Entry,Functions,FunctionKeys,Search,Screen,ScreenKeys}.java   the only Java we own
 openchemlib/                          git submodule, upstream OpenChemLib source
-scripts/build-function-keys.mjs       writes FunctionKeys.java from src/functionKeys/dictionary.json
+scripts/build-function-keys.mjs       writes FunctionKeys.java from src/functionKeys/dictionary.json and the module
 scripts/build-wasm.mjs                finds a JDK, runs Maven, then binaryen
 scripts/check-wasm.mjs                compares the committed module with the one the sources produce
 build/embed-wasm.mjs                  gzip+base64 the wasm into wasm/, copy the TeaVM runtime
@@ -126,12 +126,16 @@ change, never a stored molecule's.
 every key with its names, category, tier, prevalence, SMARTS and fragments. It is exported by the
 selection pipeline (Python and RDKit, which compiles the SMARTS, checks them against RDKit and picks
 the stored keys), not written by hand. `npm run build-function-keys` writes the stored keys, in
-plane order, into `FunctionKeys.java`; rebuild the module after it.
+plane order, into `FunctionKeys.java`, with each fragment's query FragFp and screen bits as the
+current module computes them; rebuild the module after it. The bits do not depend on the keys, but
+they do on OpenChemLib, so after bumping it run `npm run build`, `npm run build-function-keys`, then
+`npm run build` again.
 
 `Functions.java` sets bit i when any fragment of stored key i matches, in `SSSearcher`'s default
 mode, trying a fragment only on a molecule that holds its query FragFp and screen. Changing, adding
 or reordering a stored key changes every stored record, so the 512 only change in a major release.
-`functionKeys.test.ts` checks the module holds exactly the dictionary's stored keys, and
+`functionKeys.test.ts` checks the module holds exactly the dictionary's stored keys and that
+`FunctionKeys.java` is what the generator writes, and
 `functions.test.ts` that every stored bit, and every key equal to an existing plane, is what a
 substructure search for its fragments answers.
 

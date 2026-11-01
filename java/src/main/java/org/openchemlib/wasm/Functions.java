@@ -11,11 +11,18 @@ import com.actelion.research.chem.StereoMolecule;
  *
  * <p>A fragment is only tried on a molecule whose FragFp and screen hold the fragment's own query
  * FragFp and screen ({@link Screen#ofQuery}). Every true match does, so the bits are unchanged, and
- * most of the 1,628 substructure tests are skipped. The fragments and their query words are built
- * once, on first use.
+ * most of the 1,628 substructure tests are skipped. The fragments are parsed once, on first use;
+ * their query words come from {@link FunctionKeys#QUERY_BITS}, where building them here would cost
+ * a second of substructure tests in every thread.
  */
 final class Functions {
-  static final Functions STORED = new Functions(FunctionKeys.IDCODES);
+  static final Functions STORED = new Functions(FunctionKeys.IDCODES, FunctionKeys.QUERY_BITS);
+
+  /** The words of a FragFp and of a screen: 512 bits each. */
+  private static final int WORDS = 16;
+
+  /** Where the screen's bits start in a {@link FunctionKeys#QUERY_BITS} entry. */
+  private static final int SCREEN_OFFSET = 512;
 
   private final StereoMolecule[][] keys;
 
@@ -27,7 +34,7 @@ final class Functions {
 
   private final SSSearcher searcher = new SSSearcher();
 
-  private Functions(String[][] keyIDCodes) {
+  private Functions(String[][] keyIDCodes, String[][] keyQueryBits) {
     IDCodeParser parser = new IDCodeParser(false);
     keys = new StereoMolecule[keyIDCodes.length][];
     indexes = new int[keyIDCodes.length][][];
@@ -41,10 +48,28 @@ final class Functions {
         StereoMolecule fragment = parser.getCompactMolecule(keyIDCodes[key][f]);
         fragment.setFragment(true);
         keys[key][f] = fragment;
-        indexes[key][f] = Screen.FRAGFP.ofQuery(fragment);
-        screens[key][f] = Screen.DICTIONARY.ofQuery(fragment);
+        indexes[key][f] = new int[WORDS];
+        screens[key][f] = new int[WORDS];
+        readQueryBits(keyQueryBits[key][f], indexes[key][f], screens[key][f]);
       }
     }
+  }
+
+  /**
+   * Sets the bits a {@link FunctionKeys#QUERY_BITS} entry lists: two base-32 digits per bit,
+   * FragFp's below 512 and the screen's from 512.
+   */
+  private static void readQueryBits(String bits, int[] index, int[] screen) {
+    for (int at = 0; at < bits.length(); at += 2) {
+      int bit = digit(bits.charAt(at)) * 32 + digit(bits.charAt(at + 1));
+      int[] words = bit < SCREEN_OFFSET ? index : screen;
+      int position = bit % SCREEN_OFFSET;
+      words[position >> 5] |= 1 << (31 - (position & 31));
+    }
+  }
+
+  private static int digit(char character) {
+    return character <= '9' ? character - '0' : character - 'a' + 10;
   }
 
   /**
