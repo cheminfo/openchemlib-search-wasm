@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2](https://github.com/cheminfo/openchemlib-search-wasm/compare/v2.1.1...v2.1.2) (2026-11-01)
+
+
+### Performance Improvements
+
+* precompute the query words of the function keys ([b851ed6](https://github.com/cheminfo/openchemlib-search-wasm/commit/b851ed61cf56ab8a5b48cadbf06f63460e2355af))
+
 ## [2.1.1](https://github.com/cheminfo/openchemlib-search-wasm/compare/v2.1.0...v2.1.1) (2026-10-19)
 
 
